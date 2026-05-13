@@ -87,6 +87,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Nimus — Clear ABA progress for parents and BCBAs" },
+      { name: "description", content: "Spark Progress is an ABA progress tracking application for parents and BCBAs to monitor child development." },
+      { property: "og:description", content: "Spark Progress is an ABA progress tracking application for parents and BCBAs to monitor child development." },
+      { name: "twitter:description", content: "Spark Progress is an ABA progress tracking application for parents and BCBAs to monitor child development." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b9ec84b5-6799-4c20-91e0-308b621d2483/id-preview-c4279e40--42e6f682-2ca4-4158-b330-8aeee52efa37.lovable.app-1778657054975.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b9ec84b5-6799-4c20-91e0-308b621d2483/id-preview-c4279e40--42e6f682-2ca4-4158-b330-8aeee52efa37.lovable.app-1778657054975.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

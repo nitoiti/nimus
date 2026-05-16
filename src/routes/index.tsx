@@ -5,20 +5,31 @@ import {
   LineChart,
   ClipboardList,
   Sparkles,
-  HeartHandshake,
   Target,
   Layers,
+  CalendarClock,
+  TrendingUp,
+  Users,
+  FileSpreadsheet,
+  Brain,
+  Quote,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Landing,
   head: () => ({
     meta: [
-      { title: "Nimus — Clear ABA progress for parents and BCBAs" },
+      { title: "Nimus — Forecast ABA progress for every learner" },
       {
         name: "description",
         content:
-          "Turn ABA session data into clear dashboards, plain-language insights, and reports parents and BCBAs can act on.",
+          "Nimus gives BCBAs a complete skill map, trial-level data capture, and a VB-MAPP-style completion forecast — so you can finally tell parents when their child will reach the next milestone.",
+      },
+      { property: "og:title", content: "Nimus — Forecast ABA progress for every learner" },
+      {
+        property: "og:description",
+        content:
+          "A skill map, trial-level data, and a real completion forecast for every child on your caseload.",
       },
     ],
   }),
@@ -29,11 +40,13 @@ function Landing() {
     <div className="min-h-screen bg-background">
       <TopNav />
       <Hero />
-      <AudienceSplit />
-      <ValueGrid />
+      <ProblemStrip />
+      <ForecastShowcase />
       <HowItWorks />
-      <InsightShowcase />
-      <CTA />
+      <SkillMapSection />
+      <ProgressSection />
+      <AudienceSplit />
+      <BetaCTA />
       <Footer />
     </div>
   );
@@ -50,21 +63,22 @@ function TopNav() {
           <span className="font-display text-xl font-bold tracking-tight">Nimus</span>
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-          <a href="#parents" className="hover:text-foreground transition-colors">For parents</a>
-          <a href="#bcbas" className="hover:text-foreground transition-colors">For BCBAs</a>
+          <a href="#forecast" className="hover:text-foreground transition-colors">Forecast</a>
           <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
+          <a href="#skill-map" className="hover:text-foreground transition-colors">Skill map</a>
+          <a href="#audience" className="hover:text-foreground transition-colors">Who it's for</a>
         </div>
         <div className="flex items-center gap-3">
           <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground hidden sm:inline">
             Sign in
           </Link>
-          <Link
-            to="/dashboard"
+          <a
+            href="#beta"
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background shadow-soft hover:-translate-y-0.5 transition-transform"
           >
-            Open dashboard
+            Join the BCBA beta
             <ArrowRight className="size-3.5" />
-          </Link>
+          </a>
         </div>
       </div>
     </nav>
@@ -76,223 +90,180 @@ function Hero() {
     <section className="relative overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-gradient-soft" />
       <div className="absolute -top-40 left-1/2 -z-10 size-[700px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
-      <div className="mx-auto max-w-6xl px-6 pt-20 pb-24 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
-          <Sparkles className="size-3.5 text-primary" />
-          Built by a parent, for parents — and the clinicians who help them
+      <div className="mx-auto max-w-6xl px-6 pt-20 pb-24">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
+            <Sparkles className="size-3.5 text-primary" />
+            Now in beta for BCBAs and clinic teams
+          </div>
+          <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
+            Tell parents <span className="text-primary">when</span> — not just <em className="not-italic text-muted-foreground">"every child is unique."</em>
+          </h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
+            Nimus is the first ABA tool built around a complete skill map and a real completion
+            forecast. Capture trial-level data, watch mastery velocity per learner, and show parents
+            exactly when their child is projected to finish each VB-MAPP level.
+          </p>
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <a
+              href="#beta"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow hover:-translate-y-0.5 transition-transform"
+            >
+              Apply to the BCBA beta
+              <ArrowRight className="size-4" />
+            </a>
+            <Link
+              to="/analytics"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+            >
+              See a live forecast
+            </Link>
+          </div>
+          <p className="mt-5 text-xs text-muted-foreground">
+            Free during beta · Built by a parent with a real caseload · Therapist-ready data entry
+          </p>
         </div>
-        <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
-          Finally see what's <span className="text-primary">actually working</span>
-          <br className="hidden sm:block" /> in your child's ABA.
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          Nimus turns messy session notes into clear dashboards, plain-language insights, and reports
-          you can share with your therapist. No spreadsheets. No clinical degree required.
-        </p>
-        <div className="mt-9 flex flex-wrap justify-center gap-3">
-          <Link
-            to="/dashboard"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow hover:-translate-y-0.5 transition-transform"
-          >
-            Try the dashboard
-            <ArrowRight className="size-4" />
-          </Link>
-          <a
-            href="#how"
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
-          >
-            See how it works
-          </a>
-        </div>
-        <p className="mt-5 text-xs text-muted-foreground">
-          Free to start • No credit card • Your data stays private
-        </p>
 
-        {/* Hero preview card */}
         <div className="mx-auto mt-16 max-w-5xl">
-          <DashboardPreviewCard />
+          <HeroForecastCard />
         </div>
       </div>
     </section>
   );
 }
 
-function DashboardPreviewCard() {
+function HeroForecastCard() {
   return (
     <div className="rounded-3xl border border-border bg-card p-3 shadow-glow">
-      <div className="rounded-2xl bg-gradient-soft p-6 text-left">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="rounded-2xl bg-gradient-soft p-6 text-left sm:p-8">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              This week
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              VB-MAPP Level Completion Forecast
             </p>
-            <h3 className="font-display text-xl font-bold">Leo's progress at a glance</h3>
+            <h3 className="mt-1 font-display text-xl font-bold">Leo · all-time mastery rate 1.6 targets/wk</h3>
           </div>
           <span className="rounded-full bg-success/10 px-3 py-1 text-xs font-bold text-success">
-            +12% independence
+            On track
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <InsightMini
-            tone="success"
-            label="Ready to close"
-            text="2 targets are at 90%+. Time to celebrate and move on."
-          />
-          <InsightMini
-            tone="warning"
-            label="Needs attention"
-            text="“Asks for water” hasn't been practiced in 18 days."
-          />
-          <InsightMini
-            tone="info"
-            label="What to ask next"
-            text="“Why are we still prompting on the matching task?”"
-          />
+        <div className="grid gap-3 md:grid-cols-3">
+          <LevelCard level="Level 1" range="0–18m" pct={13} mastered="63/469" eta="Mar 2031" status="in progress" />
+          <LevelCard level="Level 2" range="18–30m" pct={0} mastered="0/468" eta="Nov 2036" status="not started" />
+          <LevelCard level="Level 3" range="30–48m" pct={0} mastered="0/558" eta="Jul 2043" status="not started" />
         </div>
+        <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
+          The forecast updates every time a trial is logged. Add 2 hours of session time per day and
+          Level 1 finishes 14 months sooner. Stop logging and the forecast flatlines — exactly what
+          a parent needs to see.
+        </p>
       </div>
     </div>
   );
 }
 
-function InsightMini({
-  tone,
-  label,
-  text,
+function LevelCard({
+  level,
+  range,
+  pct,
+  mastered,
+  eta,
+  status,
 }: {
-  tone: "success" | "warning" | "info";
-  label: string;
-  text: string;
+  level: string;
+  range: string;
+  pct: number;
+  mastered: string;
+  eta: string;
+  status: "in progress" | "not started";
 }) {
-  const map = {
-    success: "bg-success/10 text-success",
-    warning: "bg-warning/15 text-warning-foreground",
-    info: "bg-info/10 text-info",
-  } as const;
+  const tone =
+    status === "in progress"
+      ? "bg-primary/10 text-primary"
+      : "bg-muted text-muted-foreground";
   return (
-    <div className="rounded-xl border border-border bg-card p-4 text-left shadow-soft">
-      <span className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${map[tone]}`}>
-        {label}
-      </span>
-      <p className="mt-2 text-sm leading-relaxed text-foreground">{text}</p>
+    <div className="rounded-xl border border-border bg-card p-4 shadow-soft">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          {level} · {range}
+        </p>
+        <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${tone}`}>
+          {status}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="font-display text-3xl font-bold">{pct}%</span>
+        <span className="text-xs text-muted-foreground">{mastered} mastered</span>
+      </div>
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-success" style={{ width: `${Math.max(pct, 2)}%` }} />
+      </div>
+      <div className="mt-4 flex items-center gap-1.5 text-xs">
+        <CalendarClock className="size-3.5 text-muted-foreground" />
+        <span className="text-muted-foreground">Projected to complete</span>
+        <span className="ml-auto font-semibold text-foreground">{eta}</span>
+      </div>
     </div>
   );
 }
 
-function AudienceSplit() {
+function ProblemStrip() {
   return (
-    <section className="border-t border-border bg-background py-24">
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 md:grid-cols-2">
-        <AudienceCard
-          id="parents"
-          icon={<HeartHandshake className="size-5" />}
-          tag="For parents"
-          title="Run ABA at home with confidence"
-          desc="You don't need a BCBA's budget to track progress like one. Nimus tells you what's improving, what's stuck, and what to ask the therapist next."
-          bullets={[
-            "Plain-language insights — no jargon",
-            "Know which skills are open, stuck, or ready to close",
-            "Share clean reports with your supervisor or BCBA",
-          ]}
-          cta="Start tracking free"
-          accent="primary"
-        />
-        <AudienceCard
-          id="bcbas"
-          icon={<LineChart className="size-5" />}
-          tag="For BCBAs"
-          title="Decisions backed by clean data"
-          desc="Stop reconstructing weeks of paper notes. Nimus surfaces practice intensity, prompt levels, and mastery velocity per target — across every case."
-          bullets={[
-            "Per-target health: active, stalled, ready to close",
-            "Correct / Prompt / Error rates by week",
-            "Supervision-ready reports in one click",
-          ]}
-          cta="Explore the BCBA view"
-          accent="secondary"
-        />
+    <section className="border-t border-border bg-background py-16">
+      <div className="mx-auto max-w-5xl px-6">
+        <div className="rounded-2xl border border-border bg-surface p-8 shadow-soft sm:p-10">
+          <Quote className="size-6 text-primary" />
+          <p className="mt-4 font-display text-2xl font-semibold leading-snug text-foreground sm:text-3xl">
+            "Every child is unique — we can't tell you how long it will take."
+          </p>
+          <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+            Every parent of an autistic child has heard this. It's true that no two learners are the same —
+            and it's also true that IT projects, construction projects, every other complex domain still ships forecasts.
+            Saying "we can't" is no longer good enough. Nimus exists so BCBAs can give a real,
+            data-backed answer — and refine it every week.
+          </p>
+        </div>
       </div>
     </section>
   );
 }
 
-function AudienceCard({
-  id,
-  icon,
-  tag,
-  title,
-  desc,
-  bullets,
-  cta,
-  accent,
-}: {
-  id: string;
-  icon: React.ReactNode;
-  tag: string;
-  title: string;
-  desc: string;
-  bullets: string[];
-  cta: string;
-  accent: "primary" | "secondary";
-}) {
-  const ring = accent === "primary" ? "ring-primary/20" : "ring-secondary/20";
-  const dot = accent === "primary" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground";
-  return (
-    <div id={id} className={`rounded-3xl border border-border bg-card p-8 shadow-soft ring-1 ${ring}`}>
-      <div className={`mb-5 inline-flex items-center gap-2 rounded-full ${dot} px-3 py-1.5 text-xs font-semibold`}>
-        {icon}
-        {tag}
-      </div>
-      <h3 className="font-display text-2xl font-bold leading-tight">{title}</h3>
-      <p className="mt-3 text-muted-foreground leading-relaxed">{desc}</p>
-      <ul className="mt-6 space-y-3">
-        {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2.5 text-sm">
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-            <span className="text-foreground">{b}</span>
-          </li>
-        ))}
-      </ul>
-      <Link
-        to="/dashboard"
-        className="mt-7 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all"
-      >
-        {cta} <ArrowRight className="size-4" />
-      </Link>
-    </div>
-  );
-}
-
-function ValueGrid() {
+function ForecastShowcase() {
   const items = [
     {
-      icon: <Layers className="size-5" />,
-      title: "Organize learning",
-      desc: "Areas, programs, targets, and stimuli — structured the way ABA actually works.",
+      icon: <TrendingUp className="size-5" />,
+      title: "Mastery velocity, not vibes",
+      desc: "Recent targets-per-week × remaining scope = a date. Updates with every trial.",
     },
     {
-      icon: <ClipboardList className="size-5" />,
-      title: "Track every attempt",
-      desc: "Independent (+), prompted (P), error (−) — recorded in seconds, kept in context.",
+      icon: <CalendarClock className="size-5" />,
+      title: "Per-level ETAs",
+      desc: "Separate forecasts for VB-MAPP Level 1, 2, and 3 — and per learning area.",
     },
     {
-      icon: <Target className="size-5" />,
-      title: "See what's stuck",
-      desc: "Surface stalled targets, low practice intensity, and skills ready for the next step.",
+      icon: <Brain className="size-5" />,
+      title: "What-if levers",
+      desc: "Show what happens if hours go up, sessions are missed, or a stalled area is paused.",
     },
     {
-      icon: <Sparkles className="size-5" />,
-      title: "Insights, not numbers",
-      desc: "Nimus translates trends into a sentence you can read and act on this week.",
+      icon: <FileSpreadsheet className="size-5" />,
+      title: "Parent-ready story",
+      desc: "Cumulative progress and forecast on one chart parents actually understand.",
     },
   ];
   return (
-    <section className="bg-surface py-24">
+    <section id="forecast" className="bg-surface py-24">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mb-12 max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">What Nimus does</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">The forecast engine</p>
           <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-            A clearer way to track learning
+            The first ABA tool that answers "when?"
           </h2>
+          <p className="mt-4 text-muted-foreground">
+            Every target a child masters tightens the model. The longer Nimus tracks a learner, the
+            sharper the projection becomes — and the harder it is for anyone in the room to argue
+            with the data.
+          </p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((it) => (
@@ -312,17 +283,35 @@ function ValueGrid() {
 
 function HowItWorks() {
   const steps = [
-    { n: "01", title: "Add programs and targets", desc: "Pick from VB-MAPP or build your own learning areas." },
-    { n: "02", title: "Record session results", desc: "Tap +, P, or − for each trial. That's it." },
-    { n: "03", title: "Review progress and trends", desc: "Daily, weekly, monthly — for one child or many." },
-    { n: "04", title: "Share clear reports", desc: "Hand a clean summary to your therapist or supervisor." },
+    {
+      n: "01",
+      title: "Create a learner, assign a template",
+      desc: "Start from a VB-MAPP-inspired skill map or your own template. Different children, different maps.",
+    },
+    {
+      n: "02",
+      title: "Therapists log trials in seconds",
+      desc: "+ correct, P prompted, − error. No more paper sheets your partner has to type up.",
+    },
+    {
+      n: "03",
+      title: "Nimus closes and opens targets",
+      desc: "As mastery criteria are met, targets close and the next ones surface — automatically.",
+    },
+    {
+      n: "04",
+      title: "Show parents the forecast",
+      desc: "Per-level ETAs, weekly progress, and a story that makes therapy hours feel worth it.",
+    },
   ];
   return (
     <section id="how" className="border-t border-border bg-background py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="mb-12">
+        <div className="mb-12 max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-widest text-primary">How it works</p>
-          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">From session data to clarity in 4 steps</h2>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            From trial sheet to forecast in four steps
+          </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {steps.map((s) => (
@@ -338,60 +327,289 @@ function HowItWorks() {
   );
 }
 
-function InsightShowcase() {
+function SkillMapSection() {
   return (
-    <section className="bg-surface py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mb-12 max-w-2xl">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Know what's really moving forward</p>
+    <section id="skill-map" className="bg-surface py-24">
+      <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">The skill map</p>
           <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-            Stop guessing. Start asking better questions.
+            A complete map of what a child should know — by age
           </h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            Hundreds of programs and targets, organised into areas and stimuli, each tagged with a
+            developmental level. Close every target in Level 1 and you know the learner has the
+            repertoire of a neurotypical 18-month-old. That structure is what makes the forecast possible.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              "Inspired by VB-MAPP, but built around actual programs and targets — not assessment milestones",
+              "Templates per learner profile — early learner, severe, advanced, custom",
+              "BCBAs can edit, branch, and contribute templates the community can reuse",
+            ].map((b) => (
+              <li key={b} className="flex items-start gap-2.5 text-sm">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                <span className="text-foreground">{b}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[
-            "Which skills are open or already closed",
-            "Which targets may be ready to close",
-            "Where the child still needs many prompts",
-            "Which areas are getting enough practice",
-            "Which targets haven't been practiced recently",
-            "How much progress happened this week or month",
-            "What to ask the therapist or supervisor next",
-            "Where to focus your time tomorrow",
-          ].map((s) => (
-            <div key={s} className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-soft">
-              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />
-              <span className="text-sm font-medium text-foreground">{s}</span>
-            </div>
-          ))}
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Programs tree · Behavior / Cooperation
+          </p>
+          <div className="space-y-1.5 font-mono text-xs">
+            <TreeRow depth={0} label="📁 Behavior / Cooperation" meta="9 programs" />
+            <TreeRow depth={1} label="📄 Attending to adult" meta="6 targets" />
+            <TreeRow depth={2} label="🎯 Accept simple adult direction" badge="Mastered" tone="success" />
+            <TreeRow depth={3} label="· come to table" badge="To do" />
+            <TreeRow depth={3} label="· finish one trial" badge="To do" />
+            <TreeRow depth={3} label="· give item" badge="To do" />
+            <TreeRow depth={2} label="🎯 Complete brief demand with support" badge="To do" />
+            <TreeRow depth={2} label="🎯 Handle transitions flexibly" badge="To do" />
+            <TreeRow depth={1} label="📄 Group instruction" meta="6 targets" />
+            <TreeRow depth={1} label="📄 Gym practice / exercises" meta="5 targets" />
+            <TreeRow depth={2} label="🎯 Practice gym exercises in routine" badge="Mastered" tone="success" />
+            <TreeRow depth={1} label="📄 Independent work" meta="6 targets" />
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function CTA() {
+function TreeRow({
+  depth,
+  label,
+  meta,
+  badge,
+  tone,
+}: {
+  depth: number;
+  label: string;
+  meta?: string;
+  badge?: string;
+  tone?: "success";
+}) {
   return (
-    <section className="bg-background py-24">
-      <div className="mx-auto max-w-4xl px-6">
-        <div className="overflow-hidden rounded-3xl bg-gradient-hero p-10 text-center shadow-glow sm:p-14">
-          <h2 className="font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
-            See your child's progress more clearly — starting today.
+    <div
+      className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-surface"
+      style={{ paddingLeft: `${depth * 14 + 8}px` }}
+    >
+      <span className="truncate text-foreground">{label}</span>
+      {meta && <span className="text-muted-foreground">{meta}</span>}
+      {badge && (
+        <span
+          className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+            tone === "success" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ProgressSection() {
+  return (
+    <section className="border-t border-border bg-background py-24">
+      <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
+        <div className="order-2 lg:order-1 rounded-2xl border border-border bg-card p-5 shadow-soft">
+          <div className="mb-3 flex flex-wrap items-center gap-3 text-[10px] font-semibold text-muted-foreground">
+            <Legend dot="bg-success" label="+ correct" />
+            <Legend dot="bg-warning" label="P prompt" />
+            <Legend dot="bg-destructive" label="− error" />
+          </div>
+          <div className="space-y-2 text-xs">
+            <TrialRow target="Match/sort simple identical items" cells={["++++", "P+P+", "+", "+"]} />
+            <TrialRow target="Matching Non-Identical pictures" cells={["P+PP", "++P+", "+", "+"]} />
+            <TrialRow target="Sequencing Steps" cells={["PPP+", "PPP+", "PPP+", ""]} />
+            <TrialRow target="Seriation: ordering by size" cells={["", "", "PPP+", "+"]} />
+            <TrialRow target="Imitate simple actions" cells={["P++", "++", "+", "+"]} />
+          </div>
+        </div>
+        <div className="order-1 lg:order-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Trial-level data, painlessly</p>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            Stop typing up paper sheets at the end of the day
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-white/80">
-            Built for parents who want a clearer picture of what's happening in therapy, and BCBAs who want decisions
-            backed by clean data.
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            Therapists log trials inline as the session happens. Status updates, target rotations,
+            and stimulus counts fall out of the data automatically — and feed straight into the
+            forecast engine.
           </p>
-          <Link
-            to="/dashboard"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-primary shadow-soft hover:-translate-y-0.5 transition-transform"
-          >
-            Open the dashboard
-            <ArrowRight className="size-4" />
-          </Link>
+          <ul className="mt-6 space-y-3">
+            {[
+              "+ / P / − entry takes one keystroke per trial",
+              "Daily and weekly views per program, target, or stimulus",
+              "Mastered targets archive themselves — the active list stays clean",
+              "Every entry stamps date, user, and stimulus for audit-ready reporting",
+            ].map((b) => (
+              <li key={b} className="flex items-start gap-2.5 text-sm">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+                <span className="text-foreground">{b}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
+  );
+}
+
+function TrialRow({ target, cells }: { target: string; cells: string[] }) {
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
+      <span className="truncate text-foreground">{target}</span>
+      {cells.map((c, i) => (
+        <span
+          key={i}
+          className="grid h-6 min-w-12 place-items-center rounded bg-surface font-mono text-[10px] text-muted-foreground"
+        >
+          {c || "—"}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function AudienceSplit() {
+  return (
+    <section id="audience" className="bg-surface py-24">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="mb-12 max-w-2xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">Who Nimus is for</p>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            Built for BCBAs first. Designed so parents finally get it.
+          </h2>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <AudienceCard
+            icon={<LineChart className="size-5" />}
+            tag="For BCBAs (primary)"
+            title="The clinical brain of your caseload"
+            desc="Run every learner from one place. Your therapists capture data, Nimus turns it into target health, mastery velocity, and per-level forecasts you can defend in any parent meeting."
+            bullets={[
+              "Per-target health: active, stalled, ready to close",
+              "Forecast per level and per area — refined weekly",
+              "Build, edit, and share skill-map templates",
+              "Reports parents understand without a glossary",
+            ]}
+            cta="Apply to the beta"
+            accent="primary"
+            href="#beta"
+          />
+          <AudienceCard
+            icon={<Users className="size-5" />}
+            tag="For parents (next)"
+            title="See what your child's therapy is really doing"
+            desc="Once your BCBA invites you in, you see the same forecast they see — in plain language. No spreadsheets, no jargon, no surprise IEP meetings."
+            bullets={[
+              "Read-only views designed for non-clinicians",
+              "Plain-language insights, not BCBA shorthand",
+              "Know what to ask the team at the next meeting",
+              "Coming after the BCBA beta closes",
+            ]}
+            cta="Get notified"
+            accent="secondary"
+            href="#beta"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AudienceCard({
+  icon,
+  tag,
+  title,
+  desc,
+  bullets,
+  cta,
+  accent,
+  href,
+}: {
+  icon: React.ReactNode;
+  tag: string;
+  title: string;
+  desc: string;
+  bullets: string[];
+  cta: string;
+  accent: "primary" | "secondary";
+  href: string;
+}) {
+  const ring = accent === "primary" ? "ring-primary/30" : "ring-border";
+  const dot = accent === "primary" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground";
+  return (
+    <div className={`rounded-3xl border border-border bg-card p-8 shadow-soft ring-1 ${ring}`}>
+      <div className={`mb-5 inline-flex items-center gap-2 rounded-full ${dot} px-3 py-1.5 text-xs font-semibold`}>
+        {icon}
+        {tag}
+      </div>
+      <h3 className="font-display text-2xl font-bold leading-tight">{title}</h3>
+      <p className="mt-3 text-muted-foreground leading-relaxed">{desc}</p>
+      <ul className="mt-6 space-y-3">
+        {bullets.map((b) => (
+          <li key={b} className="flex items-start gap-2.5 text-sm">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
+            <span className="text-foreground">{b}</span>
+          </li>
+        ))}
+      </ul>
+      <a
+        href={href}
+        className="mt-7 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all"
+      >
+        {cta} <ArrowRight className="size-4" />
+      </a>
+    </div>
+  );
+}
+
+function BetaCTA() {
+  return (
+    <section id="beta" className="bg-background py-24">
+      <div className="mx-auto max-w-4xl px-6">
+        <div className="overflow-hidden rounded-3xl bg-gradient-hero p-10 text-center shadow-glow sm:p-14">
+          <p className="text-xs font-bold uppercase tracking-widest text-white/70">BCBA beta — limited cohort</p>
+          <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-white sm:text-4xl">
+            Help shape the tool. Get the forecast no one else can give your families.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-white/80">
+            We're onboarding a small group of BCBAs who want to co-design templates, stress-test the
+            forecast on their caseload, and lead the next wave of data-driven ABA practice.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <a
+              href="mailto:beta@nimus.app?subject=BCBA%20beta%20-%20Nimus"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-primary shadow-soft hover:-translate-y-0.5 transition-transform"
+            >
+              Apply to the beta
+              <ArrowRight className="size-4" />
+            </a>
+            <Link
+              to="/analytics"
+              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"
+            >
+              Tour the analytics first
+            </Link>
+          </div>
+          <p className="mt-5 text-xs text-white/70">
+            Free during beta · Your caseload data stays yours · We ask for feedback, not testimonials
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Legend({ dot, label }: { dot: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={`size-2.5 rounded ${dot}`} /> {label}
+    </span>
   );
 }
 
@@ -407,7 +625,7 @@ function Footer() {
         <div className="flex gap-6 text-xs text-muted-foreground">
           <a href="#" className="hover:text-foreground">Privacy</a>
           <a href="#" className="hover:text-foreground">Terms</a>
-          <a href="#" className="hover:text-foreground">Contact</a>
+          <a href="mailto:hello@nimus.app" className="hover:text-foreground">Contact</a>
         </div>
       </div>
     </footer>

@@ -111,10 +111,10 @@ function Hero() {
             ABA data, analytics, and forecasting. Early alpha for BCBAs.
           </div>
           <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Tell parents <span className="text-primary">when</span> their child will hit the next VB-MAPP level.
+            Your whole caseload, <span className="text-primary">understood in 30 seconds.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Nimus is a data and analytics tool for ABA therapy with autistic children. BCBAs and their therapists log every trial, Nimus turns that data into a real completion forecast across VB-MAPP Levels 1, 2, and 3, so "every child is unique" stops being the only answer. Early alpha, recruiting BCBAs to co-design the skill map.
+            Nimus is a 24/7 data and analytics workspace for BCBAs running ABA therapy with autistic children. Open a learner and instantly see the last two weeks of trials your therapists logged, which programs are progressing, which are stalled, and which targets are ready to close. No re-suggesting skills the child already mastered. No rebuilding the picture from scratch every Monday. And when a family asks if their €1,000 a month is worth it, you have the data and a real completion forecast to show them, on screen.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a

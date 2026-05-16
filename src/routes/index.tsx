@@ -45,7 +45,6 @@ function Landing() {
       <HowItWorks />
       <SkillMapSection />
       <PaperToDatabase />
-      <ProgressSection />
       <AudienceSplit />
       <BetaCTA />
       <Footer />

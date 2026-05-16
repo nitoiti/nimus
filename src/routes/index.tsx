@@ -499,22 +499,6 @@ function PaperToDatabase() {
 }
 
 
-function TrialRow({ target, cells }: { target: string; cells: string[] }) {
-  return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">
-      <span className="truncate text-foreground">{target}</span>
-      {cells.map((c, i) => (
-        <span
-          key={i}
-          className="grid h-6 min-w-12 place-items-center rounded bg-surface font-mono text-[10px] text-muted-foreground"
-        >
-          {c || "—"}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function AudienceSplit() {
   return (
     <section id="audience" className="bg-surface py-24">

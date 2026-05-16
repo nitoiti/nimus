@@ -108,13 +108,13 @@ function Hero() {
         <div className="mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
             <Sparkles className="size-3.5 text-primary" />
-            ABA data, analytics, and forecasting. Early alpha for BCBAs.
+            Built with BCBAs running ABA therapy for autistic kids.
           </div>
           <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            Your whole caseload, <span className="text-primary">understood in 30 seconds.</span>
+            Know every kid you supervise in <span className="text-primary">under a minute.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Nimus is a 24/7 data and analytics workspace for BCBAs running ABA therapy with autistic children. Open a learner and instantly see the last two weeks of trials your therapists logged, which programs are progressing, which are stalled, and which targets are ready to close. No re-suggesting skills the child already mastered. No rebuilding the picture from scratch every Monday. And when a family asks if their €1,000 a month is worth it, you have the data and a real completion forecast to show them, on screen.
+            Open a child's profile and see exactly what your therapists worked on the last two weeks, which programs are moving, which are stuck, and which targets are ready to close. Nimus never re-suggests a skill the child already mastered, never forgets old data, and is open 24/7 on your phone. When a parent paying €1,000 a month asks "is this actually working?", you open Nimus and show them the progress and a real forecast of when their child reaches the next stage.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a

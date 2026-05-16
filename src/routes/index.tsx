@@ -44,6 +44,7 @@ function Landing() {
       <ForecastShowcase />
       <HowItWorks />
       <SkillMapSection />
+      <PaperToDatabase />
       <ProgressSection />
       <AudienceSplit />
       <BetaCTA />

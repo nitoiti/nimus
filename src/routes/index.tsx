@@ -100,9 +100,9 @@ function Hero() {
             Tell parents <span className="text-primary">when</span> — not just <em className="not-italic text-muted-foreground">"every child is unique."</em>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Nimus is the first ABA tool built around a complete skill map and a real completion
-            forecast. Capture trial-level data, watch mastery velocity per learner, and show parents
-            exactly when their child is projected to finish each VB-MAPP level.
+            Nimus is built around a complete skill map and a real completion forecast for every
+            learner. Capture trial-level data, watch mastery velocity, and show parents exactly when
+            their child is projected to finish each VB-MAPP level — and what changes that date.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a

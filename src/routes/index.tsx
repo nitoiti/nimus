@@ -412,7 +412,94 @@ function TreeRow({
   );
 }
 
-function ProgressSection() {
+function PaperToDatabase() {
+  return (
+    <section className="border-t border-border bg-background py-24">
+      <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-primary">
+            From paper to database
+          </p>
+          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
+            Turn messy session sheets into clean, queryable data
+          </h2>
+          <p className="mt-4 leading-relaxed text-muted-foreground">
+            In 2026, most ABA sessions are still recorded on a clipboard, then re-typed at the end
+            of the day — if they're typed at all. Nimus replaces the paper with a structured grid
+            therapists can fill in during the session, so every trial lands in one database you can
+            search, filter, export, and forecast from. Years from now, that history is still there.
+          </p>
+          <ul className="mt-6 space-y-3">
+            {[
+              { icon: <ScanLine className="size-4" />, text: "One grid per learner, week, and target — mirrors the sheet your team already knows" },
+              { icon: <Database className="size-4" />, text: "Every trial stored with date, therapist, target, stimulus, and prompt level" },
+              { icon: <FileSpreadsheet className="size-4" />, text: "Search and filter across months of history in seconds — no scanning binders" },
+              { icon: <TrendingUp className="size-4" />, text: "Same data powers the forecast, weekly reports, and supervision review" },
+            ].map((b) => (
+              <li key={b.text} className="flex items-start gap-2.5 text-sm">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                  {b.icon}
+                </span>
+                <span className="text-foreground">{b.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="relative">
+          <div className="absolute -left-3 top-6 z-10 inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground shadow-soft ring-1 ring-border">
+            Before · paper
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+            <img
+              src={paperDataSheet}
+              alt="Handwritten ABA data sheet with weekly trial marks per target"
+              className="w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+          <div className="mt-5 flex items-center justify-center">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-glow">
+              <ArrowRight className="size-5 rotate-90" />
+            </div>
+          </div>
+          <div className="relative mt-5">
+            <div className="absolute -left-3 -top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground shadow-glow">
+              After · Nimus
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-soft">
+              <div className="mb-3 flex items-center justify-between text-[10px] font-semibold text-muted-foreground">
+                <span>Structured database · 100% searchable</span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-success" /> live
+                </span>
+              </div>
+              <div className="space-y-1.5 font-mono text-[11px]">
+                {[
+                  { t: "Match Id obj · cup", d: "2024-02-03", v: "P P" },
+                  { t: "Match Id obj · spoon", d: "2024-02-04", v: "P P P P" },
+                  { t: "Match Id obj · apple", d: "2024-02-05", v: "P P P + P" },
+                  { t: "Recept instr · clap h.", d: "2024-02-06", v: "P P + +" },
+                  { t: "Work at table · 1 min", d: "2024-02-09", v: "+ + + P +" },
+                ].map((r) => (
+                  <div
+                    key={r.t + r.d}
+                    className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-md bg-surface px-2 py-1.5"
+                  >
+                    <span className="truncate text-foreground">{r.t}</span>
+                    <span className="text-muted-foreground">{r.d}</span>
+                    <span className="rounded bg-card px-1.5 py-0.5 text-foreground">{r.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
   return (
     <section className="border-t border-border bg-background py-24">
       <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">

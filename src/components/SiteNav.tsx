@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import nimusLogo from "@/assets/nimus-logo.jpg";
 
 const appLinks = [
   { to: "/dashboard", label: "Dashboard" },
@@ -16,13 +17,12 @@ export function SiteNav() {
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-8">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-gradient-hero shadow-glow flex items-center justify-center">
-              <div className="size-2.5 rounded-full bg-white" />
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight text-foreground">
-              Nimus
-            </span>
+          <Link to="/" className="flex items-center">
+            <img
+              src={nimusLogo}
+              alt="Nimus — Autism App"
+              className="h-9 w-auto"
+            />
           </Link>
           {inApp && (
             <div className="hidden md:flex items-center gap-1">

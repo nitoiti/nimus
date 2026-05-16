@@ -500,52 +500,6 @@ function PaperToDatabase() {
 }
 
 
-  return (
-    <section className="border-t border-border bg-background py-24">
-      <div className="mx-auto grid max-w-6xl gap-12 px-6 lg:grid-cols-2 lg:items-center">
-        <div className="order-2 lg:order-1 rounded-2xl border border-border bg-card p-5 shadow-soft">
-          <div className="mb-3 flex flex-wrap items-center gap-3 text-[10px] font-semibold text-muted-foreground">
-            <Legend dot="bg-success" label="+ correct" />
-            <Legend dot="bg-warning" label="P prompt" />
-            <Legend dot="bg-destructive" label="− error" />
-          </div>
-          <div className="space-y-2 text-xs">
-            <TrialRow target="Match/sort simple identical items" cells={["++++", "P+P+", "+", "+"]} />
-            <TrialRow target="Matching Non-Identical pictures" cells={["P+PP", "++P+", "+", "+"]} />
-            <TrialRow target="Sequencing Steps" cells={["PPP+", "PPP+", "PPP+", ""]} />
-            <TrialRow target="Seriation: ordering by size" cells={["", "", "PPP+", "+"]} />
-            <TrialRow target="Imitate simple actions" cells={["P++", "++", "+", "+"]} />
-          </div>
-        </div>
-        <div className="order-1 lg:order-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary">Trial-level data, painlessly</p>
-          <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-            Stop typing up paper sheets at the end of the day
-          </h2>
-          <p className="mt-4 leading-relaxed text-muted-foreground">
-            Therapists log trials inline as the session happens. Status updates, target rotations,
-            and stimulus counts fall out of the data automatically — and feed straight into the
-            forecast engine.
-          </p>
-          <ul className="mt-6 space-y-3">
-            {[
-              "+ / P / − entry takes one keystroke per trial",
-              "Daily and weekly views per program, target, or stimulus",
-              "Mastered targets archive themselves — the active list stays clean",
-              "Every entry stamps date, user, and stimulus for audit-ready reporting",
-            ].map((b) => (
-              <li key={b} className="flex items-start gap-2.5 text-sm">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" />
-                <span className="text-foreground">{b}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function TrialRow({ target, cells }: { target: string; cells: string[] }) {
   return (
     <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5">

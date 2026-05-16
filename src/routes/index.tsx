@@ -108,13 +108,13 @@ function Hero() {
         <div className="mx-auto max-w-3xl text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
             <Sparkles className="size-3.5 text-primary" />
-            Early alpha. Recruiting BCBAs to co-design the skill map.
+            ABA data, analytics, and forecasting. Early alpha for BCBAs.
           </div>
           <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl">
-            An honest answer to <span className="text-primary">when</span> a child will reach the next level.
+            Tell parents <span className="text-primary">when</span> their child will hit the next VB-MAPP level.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-            Nimus turns messy session sheets into clean data, and clean data into a real completion forecast for every learner. The skill map is still AI generated, so we are looking for BCBAs to help shape it before we open a proper beta.
+            Nimus is a data and analytics tool for ABA therapy with autistic children. BCBAs and their therapists log every trial, Nimus turns that data into a real completion forecast across VB-MAPP Levels 1, 2, and 3, so "every child is unique" stops being the only answer. Early alpha, recruiting BCBAs to co-design the skill map.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <a

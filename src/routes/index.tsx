@@ -3,17 +3,17 @@ import {
   ArrowRight,
   CheckCircle2,
   LineChart,
-  ClipboardList,
   Sparkles,
-  Target,
-  Layers,
   CalendarClock,
   TrendingUp,
   Users,
   FileSpreadsheet,
   Brain,
   Quote,
+  Database,
+  ScanLine,
 } from "lucide-react";
+import paperDataSheet from "@/assets/paper-data-sheet.jpg";
 
 export const Route = createFileRoute("/")({
   component: Landing,

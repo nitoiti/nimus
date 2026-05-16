@@ -14,6 +14,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import paperDataSheet from "@/assets/paper-data-sheet.jpg";
+import nimusLogo from "@/assets/nimus-logo.jpg";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -56,11 +57,8 @@ function TopNav() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="size-8 rounded-lg bg-gradient-hero shadow-glow grid place-items-center">
-            <div className="size-2.5 rounded-full bg-white" />
-          </div>
-          <span className="font-display text-xl font-bold tracking-tight">Nimus</span>
+        <Link to="/" className="flex items-center">
+          <img src={nimusLogo} alt="Nimus — Autism App" className="h-9 w-auto" />
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
           <a href="#forecast" className="hover:text-foreground transition-colors">Forecast</a>
@@ -642,9 +640,8 @@ function Footer() {
   return (
     <footer className="border-t border-border bg-background py-10">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 sm:flex-row">
-        <div className="flex items-center gap-2">
-          <div className="size-6 rounded-md bg-gradient-hero" />
-          <span className="font-display font-bold">Nimus</span>
+        <div className="flex items-center gap-3">
+          <img src={nimusLogo} alt="Nimus — Autism App" className="h-7 w-auto" />
           <span className="text-xs text-muted-foreground">© 2026</span>
         </div>
         <div className="flex gap-6 text-xs text-muted-foreground">

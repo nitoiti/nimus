@@ -189,10 +189,10 @@ function HeroForecastChart() {
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={forecastData} margin={{ top: 8, right: 24, bottom: 8, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
@@ -201,17 +201,18 @@ function HeroForecastChart() {
               <YAxis
                 domain={[0, 500]}
                 ticks={[0, 150, 300, 469]}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={40}
               />
               <Tooltip
                 contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  background: "var(--card)",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
                   fontSize: 12,
+                  color: "var(--foreground)",
                 }}
               />
               <Legend
@@ -225,7 +226,7 @@ function HeroForecastChart() {
                 type="monotone"
                 dataKey="mastered"
                 name="Mastered"
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 strokeWidth={2.5}
                 dot={false}
                 connectNulls={false}
@@ -234,7 +235,7 @@ function HeroForecastChart() {
                 type="monotone"
                 dataKey="forecast"
                 name="Forecast"
-                stroke="hsl(var(--primary))"
+                stroke="var(--primary)"
                 strokeWidth={2.5}
                 strokeDasharray="6 6"
                 dot={false}

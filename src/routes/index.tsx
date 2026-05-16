@@ -257,7 +257,7 @@ function ForecastShowcase() {
         <div className="mb-12 max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-widest text-primary">The forecast engine</p>
           <h2 className="mt-3 font-display text-3xl font-bold sm:text-4xl">
-            The first ABA tool that answers "when?"
+            An ABA tool that actually answers "when?"
           </h2>
           <p className="mt-4 text-muted-foreground">
             Every target a child masters tightens the model. The longer Nimus tracks a learner, the

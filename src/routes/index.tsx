@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import paperDataSheet from "@/assets/paper-data-sheet.jpg";
 import nimusLogo from "@/assets/nimus-logo.jpg";
+import { BetaApplyDialog, openBetaApply } from "@/components/BetaApplyDialog";
 
 export const Route = createFileRoute("/")({
   component: Landing,

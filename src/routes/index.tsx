@@ -716,13 +716,14 @@ function BetaCTA() {
             We are looking for BCBAs who want to co-design the skill map, stress test the forecast on a real caseload, and shape the data entry flow before we open it to everyone. Send us an email, tell us a bit about your practice, and we will set you up.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href="mailto:beta@nimus.app?subject=BCBA%20beta%20application%20-%20Nimus&body=Hi%20Nimus%20team%2C%0A%0AI%20would%20like%20to%20apply%20to%20the%20BCBA%20beta.%0A%0AName%3A%0ACertification%2Fstate%3A%0ACaseload%20size%3A%0AWhat%20you%20use%20today%3A%0AWhat%20you%20would%20want%20to%20test%20first%3A%0A%0AThanks%21"
+            <button
+              type="button"
+              onClick={openBetaApply}
               className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-primary shadow-soft hover:-translate-y-0.5 transition-transform"
             >
               Apply to the BCBA beta
               <ArrowRight className="size-4" />
-            </a>
+            </button>
             <a
               href="#demo"
               className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"

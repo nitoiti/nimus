@@ -66,6 +66,7 @@ function Landing() {
       <AudienceSplit />
       <BetaCTA />
       <Footer />
+      <BetaApplyDialog />
     </div>
   );
 }

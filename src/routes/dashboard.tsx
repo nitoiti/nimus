@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { SeedDemoDataDialog } from "@/components/SeedDemoDataDialog";
@@ -17,26 +17,21 @@ import {
   Inbox,
 } from "lucide-react";
 
-type DashSearch = { empty?: boolean; step?: number };
-
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
   head: () => ({ meta: [{ title: "Dashboard | Nimus" }] }),
-  validateSearch: (s: Record<string, unknown>): DashSearch => ({
-    empty: s.empty === true || s.empty === "1" || s.empty === "true",
-    step: typeof s.step === "number" ? s.step : s.step ? Number(s.step) : undefined,
-  }),
 });
 
+type ViewMode = "empty" | "template-applied" | "populated";
+
 function Dashboard() {
-  const { empty, step } = useSearch({ from: "/dashboard" });
+  const [mode, setMode] = useState<ViewMode>("empty");
   const [seedOpen, setSeedOpen] = useState(false);
 
-  // Empty-state preview: ?empty=1 (step 0), ?empty=1&step=1 (template applied)
-  const isEmpty = !!empty;
-  const step1Done = isEmpty ? (step ?? 0) >= 1 : true;
-  const step2Done = isEmpty ? (step ?? 0) >= 2 : true;
-  const showOnboarding = isEmpty && !(step1Done && step2Done);
+  const isEmpty = mode !== "populated";
+  const step1Done = mode !== "empty";
+  const step2Done = mode === "populated";
+  const showOnboarding = isEmpty;
   const childName = "Test child";
 
   return (
@@ -48,36 +43,34 @@ function Dashboard() {
           : "Here's the clearest picture of Leo's ABA progress this week."
       }
       actions={
-        isEmpty ? (
-          <>
-            <Link
-              to="/dashboard"
-              search={{ empty: undefined, step: undefined } as never}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
-            >
-              Preview populated →
-            </Link>
-          </>
-        ) : (
-          <>
-            <Link
-              to="/dashboard"
-              search={{ empty: true, step: 0 } as never}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
-            >
-              Preview empty →
-            </Link>
-            <button className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted">
-              <Upload className="size-4" /> Upload session
-            </button>
-            <Link
-              to="/progress"
-              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:-translate-y-0.5 transition-transform"
-            >
-              <ClipboardList className="size-4" /> Record a session
-            </Link>
-          </>
-        )
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-full border border-border bg-card p-0.5 text-[11px] font-semibold">
+            {(["empty", "template-applied", "populated"] as ViewMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`rounded-full px-3 py-1.5 transition-colors ${
+                  mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {m === "empty" ? "Empty" : m === "template-applied" ? "Template applied" : "Populated"}
+              </button>
+            ))}
+          </div>
+          {!isEmpty && (
+            <>
+              <button className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted">
+                <Upload className="size-4" /> Upload session
+              </button>
+              <Link
+                to="/progress"
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:-translate-y-0.5 transition-transform"
+              >
+                <ClipboardList className="size-4" /> Record a session
+              </Link>
+            </>
+          )}
+        </div>
       }
     >
       {showOnboarding && (

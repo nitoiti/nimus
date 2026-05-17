@@ -120,13 +120,14 @@ function Hero() {
             Open a child's profile and see exactly what your therapists worked on the last two weeks, which programs are moving, which are stuck, and which targets are ready to close. Nimus never re-suggests a skill the child already mastered, never forgets old data, and is open 24/7 on your phone. When a parent paying €1,000 a month asks "is this actually working?", you open Nimus and show them the progress and a real forecast of when their child reaches the next stage.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <a
-              href="#beta"
+            <button
+              type="button"
+              onClick={openBetaApply}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow hover:-translate-y-0.5 transition-transform"
             >
               Apply to the BCBA beta
               <ArrowRight className="size-4" />
-            </a>
+            </button>
             <a
               href="#demo"
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"

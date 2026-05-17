@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      beta_applications: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          role: string
+          user_agent: string | null
+          wants_to_codesign: boolean
+          years_experience: number | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          role: string
+          user_agent?: string | null
+          wants_to_codesign: boolean
+          years_experience?: number | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          role?: string
+          user_agent?: string | null
+          wants_to_codesign?: boolean
+          years_experience?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

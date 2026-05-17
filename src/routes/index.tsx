@@ -693,12 +693,13 @@ function AudienceCard({
           </li>
         ))}
       </ul>
-      <a
-        href={href}
+      <button
+        type="button"
+        onClick={openBetaApply}
         className="mt-7 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all"
       >
         {cta} <ArrowRight className="size-4" />
-      </a>
+      </button>
     </div>
   );
 }

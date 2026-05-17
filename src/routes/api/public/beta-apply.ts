@@ -17,37 +17,9 @@ const ROLE_LABELS: Record<string, string> = {
   interested: "Just interested",
 };
 
-async function tryNotifyByEmail(payload: {
-  name: string;
-  email: string;
-  role: string;
-  yearsExperience: number | null;
-  wantsToCodesign: boolean;
-}) {
-  // Best-effort notification. If Lovable Emails is not yet configured this
-  // silently no-ops — the submission is already safely stored in the DB.
-  try {
-    const url = new URL("/lovable/email/transactional/send", "http://internal").pathname;
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateName: "beta-application",
-        recipientEmail: "nitoiti@gmail.com",
-        idempotencyKey: `beta-${payload.email}-${Date.now()}`,
-        templateData: {
-          name: payload.name,
-          email: payload.email,
-          role: ROLE_LABELS[payload.role] ?? payload.role,
-          yearsExperience: payload.yearsExperience,
-          wantsToCodesign: payload.wantsToCodesign,
-        },
-      }),
-    });
-  } catch {
-    // ignore — DB row is the source of truth
-  }
-}
+// NOTE: Email notifications to nitoiti@gmail.com will be wired up once the
+// project's email domain is configured. Until then every submission is safely
+// stored in the `beta_applications` table — view them in the backend.
 
 export const Route = createFileRoute("/api/public/beta-apply")({
   server: {

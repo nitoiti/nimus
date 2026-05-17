@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import paperDataSheet from "@/assets/paper-data-sheet.jpg";
 import nimusLogo from "@/assets/nimus-logo.jpg";
+import { BetaApplyDialog, openBetaApply } from "@/components/BetaApplyDialog";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -65,6 +66,7 @@ function Landing() {
       <AudienceSplit />
       <BetaCTA />
       <Footer />
+      <BetaApplyDialog />
     </div>
   );
 }
@@ -86,13 +88,14 @@ function TopNav() {
           <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground hidden sm:inline">
             Sign in
           </Link>
-          <a
-            href="#beta"
+          <button
+            type="button"
+            onClick={openBetaApply}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background shadow-soft hover:-translate-y-0.5 transition-transform"
           >
             Apply to the BCBA beta
             <ArrowRight className="size-3.5" />
-          </a>
+          </button>
         </div>
       </div>
     </nav>
@@ -117,13 +120,14 @@ function Hero() {
             Open a child's profile and see exactly what your therapists worked on the last two weeks, which programs are moving, which are stuck, and which targets are ready to close. Nimus never re-suggests a skill the child already mastered, never forgets old data, and is open 24/7 on your phone. When a parent paying €1,000 a month asks "is this actually working?", you open Nimus and show them the progress and a real forecast of when their child reaches the next stage.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <a
-              href="#beta"
+            <button
+              type="button"
+              onClick={openBetaApply}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow hover:-translate-y-0.5 transition-transform"
             >
               Apply to the BCBA beta
               <ArrowRight className="size-4" />
-            </a>
+            </button>
             <a
               href="#demo"
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
@@ -689,12 +693,13 @@ function AudienceCard({
           </li>
         ))}
       </ul>
-      <a
-        href={href}
+      <button
+        type="button"
+        onClick={openBetaApply}
         className="mt-7 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all"
       >
         {cta} <ArrowRight className="size-4" />
-      </a>
+      </button>
     </div>
   );
 }
@@ -712,13 +717,14 @@ function BetaCTA() {
             We are looking for BCBAs who want to co-design the skill map, stress test the forecast on a real caseload, and shape the data entry flow before we open it to everyone. Send us an email, tell us a bit about your practice, and we will set you up.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <a
-              href="mailto:beta@nimus.app?subject=BCBA%20beta%20application%20-%20Nimus&body=Hi%20Nimus%20team%2C%0A%0AI%20would%20like%20to%20apply%20to%20the%20BCBA%20beta.%0A%0AName%3A%0ACertification%2Fstate%3A%0ACaseload%20size%3A%0AWhat%20you%20use%20today%3A%0AWhat%20you%20would%20want%20to%20test%20first%3A%0A%0AThanks%21"
+            <button
+              type="button"
+              onClick={openBetaApply}
               className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-primary shadow-soft hover:-translate-y-0.5 transition-transform"
             >
               Apply to the BCBA beta
               <ArrowRight className="size-4" />
-            </a>
+            </button>
             <a
               href="#demo"
               className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/20 transition-colors"

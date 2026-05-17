@@ -15,6 +15,7 @@ import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicBetaApplyRouteImport } from './routes/api/public/beta-apply'
 
 const SkillMapRoute = SkillMapRouteImport.update({
   id: '/skill-map',
@@ -46,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBetaApplyRoute = ApiPublicBetaApplyRouteImport.update({
+  id: '/api/public/beta-apply',
+  path: '/api/public/beta-apply',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
+  '/api/public/beta-apply': typeof ApiPublicBetaApplyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
+  '/api/public/beta-apply': typeof ApiPublicBetaApplyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
+  '/api/public/beta-apply': typeof ApiPublicBetaApplyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/sitemap.xml'
     | '/skill-map'
+    | '/api/public/beta-apply'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/sitemap.xml'
     | '/skill-map'
+    | '/api/public/beta-apply'
   id:
     | '__root__'
     | '/'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/sitemap.xml'
     | '/skill-map'
+    | '/api/public/beta-apply'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   ProgressRoute: typeof ProgressRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SkillMapRoute: typeof SkillMapRoute
+  ApiPublicBetaApplyRoute: typeof ApiPublicBetaApplyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/beta-apply': {
+      id: '/api/public/beta-apply'
+      path: '/api/public/beta-apply'
+      fullPath: '/api/public/beta-apply'
+      preLoaderRoute: typeof ApiPublicBetaApplyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -162,7 +182,18 @@ const rootRouteChildren: RootRouteChildren = {
   ProgressRoute: ProgressRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SkillMapRoute: SkillMapRoute,
+  ApiPublicBetaApplyRoute: ApiPublicBetaApplyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

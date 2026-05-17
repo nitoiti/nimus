@@ -60,13 +60,9 @@ export const Route = createFileRoute("/api/public/beta-apply")({
           );
         }
 
-        await tryNotifyByEmail({
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          yearsExperience: data.yearsExperience ?? null,
-          wantsToCodesign: data.wantsToCodesign,
-        });
+        console.log(
+          `[beta-apply] new application: ${data.name} <${data.email}> (${ROLE_LABELS[data.role]}) — codesign: ${data.wantsToCodesign}`,
+        );
 
         return Response.json({ ok: true });
       },

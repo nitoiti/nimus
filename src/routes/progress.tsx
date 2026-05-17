@@ -1,10 +1,17 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { SeedDemoDataDialog } from "@/components/SeedDemoDataDialog";
+import { ChevronLeft, ChevronRight, Filter, FlaskConical, Plus, X, Sparkles } from "lucide-react";
+
+type ProgSearch = { empty?: boolean };
 
 export const Route = createFileRoute("/progress")({
   component: Progress,
   head: () => ({ meta: [{ title: "Progress | Nimus" }] }),
+  validateSearch: (s: Record<string, unknown>): ProgSearch => ({
+    empty: s.empty === true || s.empty === "1" || s.empty === "true",
+  }),
 });
 
 type Mark = "+" | "P" | "-" | null;

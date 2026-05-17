@@ -88,13 +88,14 @@ function TopNav() {
           <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground hidden sm:inline">
             Sign in
           </Link>
-          <a
-            href="#beta"
+          <button
+            type="button"
+            onClick={openBetaApply}
             className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background shadow-soft hover:-translate-y-0.5 transition-transform"
           >
             Apply to the BCBA beta
             <ArrowRight className="size-3.5" />
-          </a>
+          </button>
         </div>
       </div>
     </nav>

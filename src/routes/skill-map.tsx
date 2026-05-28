@@ -21,25 +21,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
   Link2,
-  Sparkles,
-  Filter,
-  Eye,
-  EyeOff,
   Search,
   ChevronRight,
   Plus,
   Clock,
   StickyNote,
   Target as TargetIcon,
-  Layers,
-  CircleDashed,
-  CircleDot,
   Check,
   X,
+  Sparkles,
+  AlertCircle,
+  Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,387 +40,313 @@ export const Route = createFileRoute("/skill-map")({
   component: SkillMap,
   head: () => ({
     meta: [
-      { title: "Development map | Nimus" },
+      { title: "Skill map | Nimus" },
       {
         name: "description",
         content:
-          "VB-MAPP–style development map: areas, milestones, and targets across levels — with one-tap test recording and program linking.",
+          "VB-MAPP skill map: 16 areas × 3 developmental levels with 0 / 0.5 / 1 scoring, emerging-skill targeting, and linked programs.",
       },
     ],
   }),
 });
 
-/* ---------- Types & mock data ---------- */
+/* ----------------------------------------------------------------------------
+ * VB-MAPP MODEL
+ * Score per milestone is the canonical paper convention:
+ *   null   → not assessed
+ *   0      → not acquired
+ *   0.5    → emerging (partial / inconsistent) — HIGHEST-VALUE TARGET
+ *   1      → mastered
+ * Areas exist only at the levels where VB-MAPP defines them.
+ * -------------------------------------------------------------------------- */
 
-type Status = "not-started" | "in-prep" | "ready" | "passed" | "failed" | "deferred";
-
-type Target = {
-  code: string; // "14-a"
-  text: string;
-  status: Status;
-  linkedProgramIds: string[];
-};
+type Score = null | 0 | 0.5 | 1;
 
 type Milestone = {
   n: number; // 1..15
   criteria: string;
-  status: Status;
-  targets: Target[];
+  score: Score;
+  subTargets: SubTarget[]; // Targets-supplement breakdown
   linkedProgramIds: string[];
-  history: TestEvent[];
+  history: ScoreEvent[];
 };
 
-type TestEvent = {
+type SubTarget = {
+  code: string;
+  text: string;
+  mastered: boolean;
+};
+
+type ScoreEvent = {
   date: string;
-  scope: "milestone" | "target";
-  scopeLabel: string; // "M14" or "14-b"
-  result: "passed" | "failed" | "retest";
+  score: 0 | 0.5 | 1;
   notes?: string;
 };
 
-type AreaCell = {
-  areaCode: string;
-  areaName: string;
-  levels: [Milestone[], Milestone[], Milestone[]]; // L1, L2, L3 — each 5 milestones
+type AreaDef = {
+  code: string;
+  name: string;
+  short: string;
+  levels: [boolean, boolean, boolean]; // available at L1, L2, L3?
 };
 
+/* The canonical VB-MAPP grid: which areas exist at each developmental level. */
+const AREAS: AreaDef[] = [
+  { code: "MND", name: "Mand", short: "Requesting", levels: [true, true, true] },
+  { code: "TCT", name: "Tact", short: "Naming", levels: [true, true, true] },
+  { code: "LSN", name: "Listener", short: "Responding", levels: [true, true, true] },
+  { code: "VPM", name: "VP-MTS", short: "Visual perceptual / match-to-sample", levels: [true, true, true] },
+  { code: "PLY", name: "Play", short: "Independent play", levels: [true, true, true] },
+  { code: "SOC", name: "Social", short: "Social / play with peers", levels: [true, true, true] },
+  { code: "IMI", name: "Imitation", short: "Motor imitation", levels: [true, true, false] },
+  { code: "ECH", name: "Echoic", short: "Vocal imitation", levels: [true, true, false] },
+  { code: "SVB", name: "Spont. vocal", short: "Spontaneous vocal", levels: [true, false, false] },
+  { code: "LRF", name: "LRFFC", short: "Listener by feature / function / class", levels: [false, true, true] },
+  { code: "INT", name: "Intraverbal", short: "Intraverbal responding", levels: [false, true, true] },
+  { code: "GRP", name: "Classroom", short: "Group / classroom routines", levels: [false, true, true] },
+  { code: "LIN", name: "Linguistics", short: "Linguistic structure", levels: [false, true, true] },
+  { code: "RED", name: "Reading", short: "Reading", levels: [false, false, true] },
+  { code: "WRT", name: "Writing", short: "Writing", levels: [false, false, true] },
+  { code: "MTH", name: "Math", short: "Math", levels: [false, false, true] },
+];
+
+const LEVELS = [
+  { n: 1, label: "Level 1", age: "0–18 mo", range: "M1–M5", color: "level-1" },
+  { n: 2, label: "Level 2", age: "18–30 mo", range: "M6–M10", color: "level-2" },
+  { n: 3, label: "Level 3", age: "30–48 mo", range: "M11–M15", color: "level-3" },
+] as const;
+
 const PROGRAMS = [
-  { id: "p1", name: "Mand training — items", area: "MND" },
+  { id: "p1", name: "Mand training — preferred items", area: "MND" },
   { id: "p2", name: "Tact — common nouns", area: "TCT" },
   { id: "p3", name: "Listener — body parts", area: "LSN" },
   { id: "p4", name: "Match-to-sample (identical)", area: "VPM" },
   { id: "p5", name: "Independent play — puzzles", area: "PLY" },
-  { id: "p6", name: "Imitation — gross motor", area: "IMI" },
-  { id: "p7", name: "Group skills — circle time", area: "GRP" },
-  { id: "p8", name: "Writing — name copy", area: "WRT" },
+  { id: "p6", name: "Gross motor imitation", area: "IMI" },
+  { id: "p7", name: "Circle-time routines", area: "GRP" },
+  { id: "p8", name: "Name copy / pre-writing", area: "WRT" },
 ];
 
-const AREAS_DEF: { code: string; name: string }[] = [
-  { code: "MND", name: "Mand / Requesting" },
-  { code: "TCT", name: "Tact / Naming" },
-  { code: "LSN", name: "Listener Responding" },
-  { code: "VPM", name: "Visual Perceptual / MTS" },
-  { code: "PLY", name: "Independent Play" },
-  { code: "SOC", name: "Social / Social Skills" },
-  { code: "IMI", name: "Motor Imitation" },
-  { code: "ECH", name: "Echoic / Vocal Imitation" },
-  { code: "SVB", name: "Spontaneous Vocal" },
-  { code: "LRF", name: "LRFFC / Conditional" },
-  { code: "INT", name: "Intraverbal" },
-  { code: "GRP", name: "Group / Classroom" },
-  { code: "LIN", name: "Linguistics" },
-  { code: "WRT", name: "Writing" },
-  { code: "RED", name: "Reading" },
-  { code: "MTH", name: "Math" },
-];
+/* ---------- Mock data (deterministic) ---------- */
 
-const LEVELS = [
-  { n: 1, label: "L1", age: "0–18m", range: "M1–M5" },
-  { n: 2, label: "L2", age: "18–30m", range: "M6–M10" },
-  { n: 3, label: "L3", age: "30–48m", range: "M11–M15" },
-] as const;
+function seeded(n: number) {
+  return Math.abs((Math.sin(n * 9301 + 49297) * 233280) % 1);
+}
 
-// Deterministic mock: most L1 passed, some L2 in progress, L3 untouched.
-function buildMockAreas(): AreaCell[] {
-  const seed = (n: number) => (Math.sin(n) * 10000) % 1;
-  return AREAS_DEF.map((a, ai) => {
-    const levels = [0, 1, 2].map((lvl) => {
-      return Array.from({ length: 5 }, (_, i) => {
+type Cell = { milestones: Milestone[] } | null;
+type Grid = Cell[][]; // [areaIdx][levelIdx]
+
+function buildGrid(): Grid {
+  return AREAS.map((a, ai) =>
+    a.levels.map((available, lvl) => {
+      if (!available) return null;
+      const milestones = Array.from({ length: 5 }, (_, i) => {
         const milestoneN = lvl * 5 + i + 1;
-        const r = Math.abs(seed(ai * 17 + milestoneN));
-        let status: Status = "not-started";
-        if (lvl === 0) status = r > 0.15 ? "passed" : r > 0.05 ? "ready" : "in-prep";
-        else if (lvl === 1) {
-          status =
-            r > 0.85 ? "passed" : r > 0.55 ? "ready" : r > 0.3 ? "in-prep" : "not-started";
-        } else {
-          status = r > 0.92 ? "ready" : r > 0.75 ? "in-prep" : "not-started";
+        const r = seeded(ai * 31 + milestoneN);
+        // L1 mostly mastered; L2 mixed with lots of emerging; L3 mostly unassessed
+        let score: Score;
+        if (lvl === 0) score = r > 0.2 ? 1 : r > 0.08 ? 0.5 : r > 0.02 ? 0 : null;
+        else if (lvl === 1) score = r > 0.75 ? 1 : r > 0.45 ? 0.5 : r > 0.2 ? 0 : null;
+        else score = r > 0.9 ? 0.5 : r > 0.7 ? 0 : null;
+
+        const subCount = 3 + Math.floor(r * 5);
+        const subTargets: SubTarget[] = Array.from({ length: subCount }, (_, ti) => ({
+          code: `${milestoneN}-${String.fromCharCode(97 + ti)}`,
+          text: subCriteria(a.code, milestoneN, ti),
+          mastered: score === 1 || (score === 0.5 && ti < Math.floor(subCount / 2)),
+        }));
+
+        const history: ScoreEvent[] = [];
+        if (score === 1) {
+          history.push({ date: `2026-0${(ai % 4) + 1}-${10 + i}`, score: 1, notes: "Met criterion across 3 sessions." });
+        } else if (score === 0.5) {
+          history.push({ date: `2026-04-${10 + i}`, score: 0, notes: "Below criterion — needs more reps." });
+          history.push({ date: `2026-05-${10 + i}`, score: 0.5, notes: "Inconsistent across stimuli." });
         }
-        const targetCount = 3 + Math.floor(r * 4); // 3–6
-        const targets: Target[] = Array.from({ length: targetCount }, (_, ti) => {
-          const code = `${milestoneN}-${String.fromCharCode(97 + ti)}`;
-          let tStatus: Status = "not-started";
-          if (status === "passed") tStatus = "passed";
-          else if (status === "ready") tStatus = ti < targetCount - 1 ? "passed" : "ready";
-          else if (status === "in-prep")
-            tStatus = ti === 0 ? "ready" : ti === 1 ? "in-prep" : "not-started";
-          return {
-            code,
-            text: sampleCriteria(a.code, milestoneN, ti),
-            status: tStatus,
-            linkedProgramIds: ti === 0 && status !== "not-started" ? [PROGRAMS[ai % PROGRAMS.length].id] : [],
-          };
-        });
-        const history: TestEvent[] =
-          status === "passed"
-            ? [
-                {
-                  date: `2026-0${(ai % 4) + 1}-${10 + i}`,
-                  scope: "milestone",
-                  scopeLabel: `M${milestoneN}`,
-                  result: "passed",
-                  notes: "Met criteria across 3 sessions.",
-                },
-              ]
-            : status === "ready"
-              ? [
-                  {
-                    date: `2026-05-${10 + i}`,
-                    scope: "target",
-                    scopeLabel: `${milestoneN}-a`,
-                    result: "passed",
-                  },
-                ]
-              : [];
+
         return {
           n: milestoneN,
-          criteria: sampleCriteria(a.code, milestoneN, -1),
-          status,
-          targets,
-          linkedProgramIds:
-            status !== "not-started" ? [PROGRAMS[(ai + lvl) % PROGRAMS.length].id] : [],
+          criteria: criterionText(a.code, milestoneN),
+          score,
+          subTargets,
+          linkedProgramIds: score === 0.5 ? [PROGRAMS[ai % PROGRAMS.length].id] : [],
           history,
-        } as Milestone;
+        };
       });
-    }) as [Milestone[], Milestone[], Milestone[]];
-    return { areaCode: a.code, areaName: a.name, levels };
-  });
+      return { milestones };
+    }) as Cell[],
+  );
 }
 
-function sampleCriteria(area: string, m: number, t: number): string {
-  const base: Record<string, string> = {
-    MND: "Requests preferred items spontaneously",
-    TCT: "Tacts common objects in the environment",
-    LSN: "Follows multi-step listener instructions",
-    VPM: "Matches identical pictures across an array",
-    PLY: "Engages independently with toys for 5+ min",
-    SOC: "Initiates interaction with a peer",
-    IMI: "Imitates gross motor actions on request",
-    ECH: "Echoes 2-syllable words clearly",
-    WRT: "Writes own name legibly without a model",
-    GRP: "Sits in a 20-min group session, responds to 5 questions",
+function criterionText(area: string, m: number): string {
+  const stems: Record<string, string> = {
+    MND: "Spontaneously emits mands for preferred items/activities",
+    TCT: "Tacts items, actions, and features in the environment",
+    LSN: "Responds correctly to spoken instructions and labels",
+    VPM: "Matches identical/similar stimuli across arrays",
+    PLY: "Engages with toys independently for an extended period",
+    SOC: "Initiates and sustains interaction with a peer",
+    IMI: "Imitates motor actions on request",
+    ECH: "Echoes words and phrases clearly",
+    SVB: "Emits spontaneous vocalizations during play",
+    LRF: "Identifies items by feature, function, or class",
+    INT: "Answers questions in absence of the referent",
+    GRP: "Participates in group routines and follows classroom expectations",
+    LIN: "Produces grammatically correct utterances",
+    RED: "Decodes printed words and reads simple text",
+    WRT: "Writes letters, numbers, and own name legibly",
+    MTH: "Demonstrates one-to-one correspondence and quantity",
   };
-  const stem = base[area] ?? "Demonstrates skill across novel stimuli";
-  if (t < 0) return `${stem} (M${m})`;
-  return `${stem} — sub-step ${String.fromCharCode(97 + t)}`;
+  return `${stems[area] ?? "Demonstrates skill across novel stimuli"} (M${m}).`;
 }
 
-/* ---------- Status visual system ---------- */
+function subCriteria(area: string, m: number, t: number): string {
+  const verbs = ["with 3 items", "across 5 trials", "without prompt", "with novel stimuli", "in 2 settings", "with a peer", "after 30s delay"];
+  const stem = criterionText(area, m).replace(/\s*\(M\d+\)\.$/, "");
+  return `${stem} — ${verbs[t % verbs.length]}`;
+}
 
-const STATUS_META: Record<
-  Status,
-  { label: string; dot: string; tile: string; ring: string; text: string }
-> = {
-  "not-started": {
-    label: "Not started",
-    dot: "bg-muted-foreground/30",
-    tile: "bg-card hover:bg-surface",
-    ring: "ring-border",
-    text: "text-muted-foreground",
-  },
-  "in-prep": {
-    label: "In preparation",
-    dot: "bg-info",
-    tile: "bg-info/8 hover:bg-info/15",
-    ring: "ring-info/30",
-    text: "text-info",
-  },
-  ready: {
-    label: "Ready to test",
-    dot: "bg-primary",
-    tile: "bg-primary/10 hover:bg-primary/20",
-    ring: "ring-primary/40",
-    text: "text-primary",
-  },
-  passed: {
-    label: "Passed",
-    dot: "bg-success",
-    tile: "bg-success/15 hover:bg-success/25",
-    ring: "ring-success/40",
-    text: "text-success",
-  },
-  failed: {
-    label: "Failed",
-    dot: "bg-destructive",
-    tile: "bg-destructive/10 hover:bg-destructive/20",
-    ring: "ring-destructive/40",
-    text: "text-destructive",
-  },
-  deferred: {
-    label: "Deferred",
-    dot: "bg-warning",
-    tile: "bg-warning/15 hover:bg-warning/25",
-    ring: "ring-warning/40",
-    text: "text-warning-foreground",
-  },
-};
+/* ----------------------------------------------------------------------------
+ * Page
+ * -------------------------------------------------------------------------- */
 
-/* ---------- Page ---------- */
+type ViewMode = "score" | "targeting";
 
 function SkillMap() {
-  const [areas] = useState<AreaCell[]>(() => buildMockAreas());
-  const [levelFilter, setLevelFilter] = useState<1 | 2 | 3 | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
-  const [hideClosed, setHideClosed] = useState(false);
+  const [grid] = useState<Grid>(() => buildGrid());
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<ViewMode>("score");
   const [selected, setSelected] = useState<{
-    area: AreaCell;
+    areaIdx: number;
     levelIdx: 0 | 1 | 2;
     milestoneIdx: number;
   } | null>(null);
 
   const filteredAreas = useMemo(() => {
-    if (!query.trim()) return areas;
+    if (!query.trim()) return AREAS.map((_, i) => i);
     const q = query.toLowerCase();
-    return areas.filter(
-      (a) =>
-        a.areaName.toLowerCase().includes(q) ||
-        a.areaCode.toLowerCase().includes(q),
-    );
-  }, [areas, query]);
+    return AREAS.map((a, i) => ({ a, i }))
+      .filter(({ a }) => a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || a.short.toLowerCase().includes(q))
+      .map(({ i }) => i);
+  }, [query]);
 
-  const visibleLevels = useMemo(
-    () => (levelFilter === "all" ? [0, 1, 2] : [levelFilter - 1]),
-    [levelFilter],
-  );
-
-  // Top stats
-  const stats = useMemo(() => {
-    let total = 0,
-      passed = 0,
-      ready = 0,
-      inPrep = 0;
-    areas.forEach((a) =>
-      a.levels.forEach((lvl) =>
-        lvl.forEach((m) => {
-          total++;
-          if (m.status === "passed") passed++;
-          else if (m.status === "ready") ready++;
-          else if (m.status === "in-prep") inPrep++;
-        }),
-      ),
-    );
-    return { total, passed, ready, inPrep };
-  }, [areas]);
+  // Level summaries: total earned / total scored max for each level
+  const levelStats = useMemo(() => {
+    return LEVELS.map((_, lvl) => {
+      let earned = 0;
+      let possible = 0;
+      let emerging = 0;
+      let unassessed = 0;
+      grid.forEach((row) => {
+        const cell = row[lvl];
+        if (!cell) return;
+        cell.milestones.forEach((m) => {
+          possible += 1;
+          if (m.score === null) unassessed += 1;
+          else {
+            earned += m.score;
+            if (m.score === 0.5) emerging += 1;
+          }
+        });
+      });
+      return { earned, possible, emerging, unassessed };
+    });
+  }, [grid]);
 
   return (
     <AppLayout
-      title="Development map"
-      subtitle="VB-MAPP–style view of every milestone and target across areas and levels."
+      title="Skill map"
+      subtitle="VB-MAPP scoring grid — 16 skill areas across 3 developmental levels."
     >
-      {/* Stats strip */}
-      <section className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <StatChip label="Total milestones" value={stats.total} />
-        <StatChip label="Passed" value={stats.passed} tone="success" />
-        <StatChip label="Ready to test" value={stats.ready} tone="primary" />
-        <StatChip label="In preparation" value={stats.inPrep} tone="info" />
+      {/* Level summary strip — what the BCBA scans first */}
+      <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {LEVELS.map((lv, i) => (
+          <LevelSummary key={lv.n} lv={lv} levelIdx={i as 0 | 1 | 2} stats={levelStats[i]} />
+        ))}
       </section>
 
       {/* Toolbar */}
       <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-soft md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1 items-center gap-2">
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative max-w-xs flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search area…"
+              placeholder="Search skill area…"
               className="h-9 pl-8"
             />
           </div>
-          <Select value={String(levelFilter)} onValueChange={(v) => setLevelFilter(v === "all" ? "all" : (Number(v) as 1 | 2 | 3))}>
-            <SelectTrigger className="h-9 w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All levels</SelectItem>
-              <SelectItem value="1">Level 1</SelectItem>
-              <SelectItem value="2">Level 2</SelectItem>
-              <SelectItem value="3">Level 3</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as Status | "all")}>
-            <SelectTrigger className="h-9 w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Any status</SelectItem>
-              <SelectItem value="ready">Ready to test</SelectItem>
-              <SelectItem value="in-prep">In preparation</SelectItem>
-              <SelectItem value="passed">Passed</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-              <SelectItem value="not-started">Not started</SelectItem>
-            </SelectContent>
-          </Select>
+
+          <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
+            <ViewToggle active={view === "score"} onClick={() => setView("score")} label="Score grid" />
+            <ViewToggle active={view === "targeting"} onClick={() => setView("targeting")} label="Targeting view" />
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setHideClosed((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground/80 hover:bg-muted"
-          >
-            {hideClosed ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-            {hideClosed ? "Show passed targets" : "Hide passed targets"}
-          </button>
-          <Legend />
-        </div>
+        <Legend />
       </section>
 
-      {/* Grid — areas as horizontal scroll columns, levels as vertical bands */}
+      {/* The grid */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <div className="overflow-x-auto">
-          <div
-            className="min-w-fit"
-            style={{
-              display: "grid",
-              gridTemplateColumns: `56px repeat(${filteredAreas.length}, minmax(132px, 1fr))`,
-            }}
-          >
-            {/* Header row */}
-            <div className="sticky left-0 z-20 border-b border-r border-border bg-surface" />
-            {filteredAreas.map((a) => (
-              <div
-                key={a.areaCode}
-                className="border-b border-r border-border bg-surface px-3 py-3"
-              >
-                <div className="text-[10px] font-bold tracking-widest text-muted-foreground">
-                  {a.areaCode}
-                </div>
-                <div className="mt-0.5 text-xs font-semibold leading-tight text-foreground">
-                  {a.areaName}
-                </div>
-              </div>
-            ))}
-
-            {/* Level bands */}
-            {visibleLevels.map((lvlIdx) => {
-              const lv = LEVELS[lvlIdx];
-              return (
-                <LevelBand
-                  key={lv.n}
-                  lv={lv}
-                  lvlIdx={lvlIdx as 0 | 1 | 2}
-                  areas={filteredAreas}
-                  statusFilter={statusFilter}
-                  hideClosed={hideClosed}
-                  onSelect={(area, milestoneIdx) =>
-                    setSelected({ area, levelIdx: lvlIdx as 0 | 1 | 2, milestoneIdx })
-                  }
-                />
-              );
-            })}
-          </div>
+          <table className="w-full border-separate border-spacing-0">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-20 w-[180px] border-b border-r border-border bg-surface px-3 py-2 text-left">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Skill area
+                  </span>
+                </th>
+                {LEVELS.map((lv, i) => (
+                  <th
+                    key={lv.n}
+                    className={cn(
+                      "border-b border-r border-border px-2 py-2 text-center",
+                      levelHeaderBg(i as 0 | 1 | 2),
+                    )}
+                  >
+                    <div className="font-display text-sm font-bold text-foreground">{lv.label}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {lv.age} · {lv.range}
+                    </div>
+                  </th>
+                ))}
+                <th className="border-b border-border px-3 py-2 text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Area score
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAreas.map((ai) => {
+                const a = AREAS[ai];
+                return (
+                  <AreaRow
+                    key={a.code}
+                    a={a}
+                    areaIdx={ai}
+                    cells={grid[ai]}
+                    view={view}
+                    onPick={(levelIdx, milestoneIdx) =>
+                      setSelected({ areaIdx: ai, levelIdx, milestoneIdx })
+                    }
+                  />
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Drill-down */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl">
           {selected && (
             <MilestoneDetail
-              area={selected.area}
+              area={AREAS[selected.areaIdx]}
               levelIdx={selected.levelIdx}
-              milestoneIdx={selected.milestoneIdx}
+              milestone={grid[selected.areaIdx][selected.levelIdx]!.milestones[selected.milestoneIdx]}
             />
           )}
         </SheetContent>
@@ -436,253 +355,292 @@ function SkillMap() {
   );
 }
 
-/* ---------- Level band ---------- */
+/* ----------------------------------------------------------------------------
+ * Area row — three level cells, each containing 5 milestone squares
+ * -------------------------------------------------------------------------- */
 
-function LevelBand({
-  lv,
-  lvlIdx,
-  areas,
-  statusFilter,
-  hideClosed,
-  onSelect,
+function AreaRow({
+  a,
+  areaIdx,
+  cells,
+  view,
+  onPick,
 }: {
-  lv: (typeof LEVELS)[number];
-  lvlIdx: 0 | 1 | 2;
-  areas: AreaCell[];
-  statusFilter: Status | "all";
-  hideClosed: boolean;
-  onSelect: (area: AreaCell, milestoneIdx: number) => void;
+  a: AreaDef;
+  areaIdx: number;
+  cells: Cell[];
+  view: ViewMode;
+  onPick: (levelIdx: 0 | 1 | 2, milestoneIdx: number) => void;
 }) {
-  return (
-    <>
-      {/* Level label cell — spans first column, all 5 milestone rows */}
-      <div
-        className="sticky left-0 z-10 flex flex-col items-center justify-center gap-1 border-b border-r border-border bg-gradient-to-b from-surface to-card"
-        style={{ gridRow: `span 1` }}
-      >
-        <div className="rotate-0 py-3 text-center">
-          <div className="font-display text-base font-bold text-foreground">{lv.label}</div>
-          <div className="mt-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
-            {lv.age}
-          </div>
-          <div className="mt-0.5 text-[9px] text-muted-foreground">{lv.range}</div>
-        </div>
-      </div>
+  // total area score across all scored milestones
+  const { earned, possible, emerging } = useMemo(() => {
+    let e = 0, p = 0, em = 0;
+    cells.forEach((c) => {
+      if (!c) return;
+      c.milestones.forEach((m) => {
+        p += 1;
+        if (m.score !== null) {
+          e += m.score;
+          if (m.score === 0.5) em += 1;
+        }
+      });
+    });
+    return { earned: e, possible: p, emerging: em };
+  }, [cells]);
 
-      {/* Stack of 5 milestones per area, rendered as a 5-row mini grid inside each cell */}
-      {areas.map((a) => {
-        const milestones = a.levels[lvlIdx];
-        return (
-          <div
-            key={a.areaCode}
-            className="flex flex-col gap-1 border-b border-r border-border bg-background/40 p-1.5"
-          >
-            {milestones
-              .slice()
-              .reverse() // M5 on top, M1 at bottom — matches VB-MAPP convention
-              .map((m, revIdx) => {
-                const idx = milestones.length - 1 - revIdx;
-                const dim =
-                  statusFilter !== "all" && m.status !== statusFilter;
-                const collapsed = hideClosed && m.status === "passed";
-                return (
-                  <MilestoneTile
-                    key={m.n}
-                    m={m}
-                    dim={dim}
-                    collapsed={collapsed}
-                    onClick={() => onSelect(a, idx)}
-                  />
-                );
-              })}
+  return (
+    <tr className="group">
+      <th
+        scope="row"
+        className="sticky left-0 z-10 border-b border-r border-border bg-card px-3 py-2 text-left align-middle group-hover:bg-surface"
+      >
+        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          {a.code}
+        </div>
+        <div className="text-sm font-semibold leading-tight text-foreground">{a.name}</div>
+        <div className="text-[10px] leading-tight text-muted-foreground">{a.short}</div>
+      </th>
+
+      {cells.map((cell, levelIdx) => (
+        <td
+          key={levelIdx}
+          className={cn("border-b border-r border-border align-middle", levelCellBg(levelIdx as 0 | 1 | 2))}
+        >
+          {cell ? (
+            <div className="flex items-center justify-center gap-1 px-2 py-2">
+              {cell.milestones.map((m, mi) => (
+                <MilestoneSquare
+                  key={m.n}
+                  m={m}
+                  levelIdx={levelIdx as 0 | 1 | 2}
+                  view={view}
+                  onClick={() => onPick(levelIdx as 0 | 1 | 2, mi)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid place-items-center px-2 py-3 text-[10px] uppercase tracking-wider text-muted-foreground/40">
+              not in level
+            </div>
+          )}
+        </td>
+      ))}
+
+      <td className="border-b border-border px-3 py-2 text-right align-middle">
+        <div className="font-display text-sm font-bold tabular-nums text-foreground">
+          {formatScore(earned)}
+          <span className="text-muted-foreground"> / {possible}</span>
+        </div>
+        {emerging > 0 && (
+          <div className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+            {emerging} emerging
           </div>
-        );
-      })}
-    </>
+        )}
+      </td>
+    </tr>
   );
 }
 
-/* ---------- Milestone tile ---------- */
+/* ----------------------------------------------------------------------------
+ * Milestone square — paper VB-MAPP convention: empty / half / full
+ * Coloured by LEVEL, not by status. Tiny link indicator only when linked.
+ * -------------------------------------------------------------------------- */
 
-function MilestoneTile({
+function MilestoneSquare({
   m,
-  dim,
-  collapsed,
+  levelIdx,
+  view,
   onClick,
 }: {
   m: Milestone;
-  dim: boolean;
-  collapsed: boolean;
+  levelIdx: 0 | 1 | 2;
+  view: ViewMode;
   onClick: () => void;
 }) {
-  const meta = STATUS_META[m.status];
-  const passedTargets = m.targets.filter((t) => t.status === "passed").length;
-  const linkedCount = m.linkedProgramIds.length;
+  const fill = levelFillClass(levelIdx);
+  const linked = m.linkedProgramIds.length > 0;
 
-  if (collapsed) {
-    return (
-      <button
-        onClick={onClick}
-        className={cn(
-          "group flex items-center justify-between rounded-md px-2 py-1 text-[10px] font-medium ring-1 ring-inset transition",
-          meta.tile,
-          meta.ring,
-          dim && "opacity-30",
-        )}
-      >
-        <span className="inline-flex items-center gap-1">
-          <Check className="size-3 text-success" />
-          M{m.n}
-        </span>
-      </button>
+  // In "targeting" view, dim everything that's not an action item (0.5 emerging or null with linked program)
+  const isAction = m.score === 0.5;
+  const dimmed = view === "targeting" && !isAction && m.score !== null;
+
+  let inner: React.ReactNode;
+  if (m.score === null) {
+    inner = (
+      <span className="absolute inset-0 grid place-items-center text-[10px] font-bold text-muted-foreground/50">
+        ?
+      </span>
     );
+  } else if (m.score === 1) {
+    inner = <span className={cn("absolute inset-[3px] rounded-[3px]", fill.solid)} />;
+  } else if (m.score === 0.5) {
+    // Diagonal half-fill — emerging
+    inner = (
+      <span
+        className={cn("absolute inset-[3px] rounded-[3px]", fill.solid)}
+        style={{
+          clipPath: "polygon(0 100%, 100% 100%, 100% 0)",
+        }}
+      />
+    );
+  } else {
+    // 0 — assessed but not acquired (empty box, solid border)
+    inner = null;
   }
 
   return (
     <button
       onClick={onClick}
+      title={`M${m.n} · ${scoreLabel(m.score)}`}
+      aria-label={`Milestone ${m.n}, ${scoreLabel(m.score)}`}
       className={cn(
-        "group relative flex flex-col gap-1 rounded-lg px-2 py-1.5 text-left ring-1 ring-inset transition focus:outline-none focus:ring-2 focus:ring-primary",
-        meta.tile,
-        meta.ring,
-        dim && "opacity-30",
+        "relative grid size-8 place-items-center rounded-[5px] border-2 transition-all hover:scale-110 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary",
+        m.score === null
+          ? "border-dashed border-border bg-background/40"
+          : cn("bg-background/60", fill.border),
+        dimmed && "opacity-25",
+        isAction && view === "targeting" && "ring-2 ring-amber-400 ring-offset-1 ring-offset-card",
       )}
     >
-      <div className="flex items-center justify-between">
-        <span className="font-display text-sm font-bold tabular-nums text-foreground">
-          M{m.n}
+      {inner}
+      <span className="absolute -bottom-3.5 text-[8px] font-bold tabular-nums text-muted-foreground">
+        M{m.n}
+      </span>
+      {linked && (
+        <span
+          title="Program linked"
+          className="absolute -right-1 -top-1 grid size-3 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm"
+        >
+          <Link2 className="size-2" strokeWidth={3} />
         </span>
-        <span className={cn("size-2 rounded-full", meta.dot)} />
-      </div>
-
-      {/* Target dots — micro progress */}
-      <div className="flex items-center gap-0.5">
-        {m.targets.map((t) => (
-          <span
-            key={t.code}
-            className={cn(
-              "h-1 flex-1 rounded-full",
-              t.status === "passed"
-                ? "bg-success"
-                : t.status === "ready"
-                  ? "bg-primary"
-                  : t.status === "in-prep"
-                    ? "bg-info"
-                    : t.status === "failed"
-                      ? "bg-destructive"
-                      : "bg-muted-foreground/20",
-            )}
-          />
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-        <span className="tabular-nums">
-          {passedTargets}/{m.targets.length}
-        </span>
-        {linkedCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 text-primary">
-            <Link2 className="size-2.5" />
-            {linkedCount}
-          </span>
-        )}
-      </div>
+      )}
     </button>
   );
 }
 
-/* ---------- Milestone detail panel ---------- */
+/* ----------------------------------------------------------------------------
+ * Level summary card — what the BCBA scans first
+ * -------------------------------------------------------------------------- */
+
+function LevelSummary({
+  lv,
+  levelIdx,
+  stats,
+}: {
+  lv: (typeof LEVELS)[number];
+  levelIdx: 0 | 1 | 2;
+  stats: { earned: number; possible: number; emerging: number; unassessed: number };
+}) {
+  const pct = stats.possible > 0 ? (stats.earned / stats.possible) * 100 : 0;
+  const fill = levelFillClass(levelIdx);
+  return (
+    <div className={cn("rounded-2xl border p-4 shadow-soft", fill.border, "bg-card")}>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <div className="font-display text-base font-bold text-foreground">{lv.label}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {lv.age}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="font-display text-2xl font-bold tabular-nums text-foreground">
+            {formatScore(stats.earned)}
+            <span className="text-sm text-muted-foreground"> / {stats.possible}</span>
+          </div>
+          <div className="text-[10px] tabular-nums text-muted-foreground">
+            {Math.round(pct)}% mastered
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className={cn("h-full transition-all", fill.solid)} style={{ width: `${pct}%` }} />
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 text-[11px]">
+        {stats.emerging > 0 && (
+          <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+            <Sparkles className="size-3" />
+            {stats.emerging} emerging — prime targets
+          </span>
+        )}
+        {stats.unassessed > 0 && (
+          <span className="inline-flex items-center gap-1 text-muted-foreground">
+            <AlertCircle className="size-3" />
+            {stats.unassessed} unassessed
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------------------------------------------------
+ * Detail panel — drill-down with 0 / 0.5 / 1 scoring, sub-targets, programs, history
+ * -------------------------------------------------------------------------- */
 
 function MilestoneDetail({
   area,
   levelIdx,
-  milestoneIdx,
+  milestone,
 }: {
-  area: AreaCell;
+  area: AreaDef;
   levelIdx: 0 | 1 | 2;
-  milestoneIdx: number;
+  milestone: Milestone;
 }) {
-  const m = area.levels[levelIdx][milestoneIdx];
   const lv = LEVELS[levelIdx];
-  const meta = STATUS_META[m.status];
-
-  const [tab, setTab] = useState("record");
-  const [quickResult, setQuickResult] = useState<"passed" | "failed" | "retest" | null>(null);
+  const [tab, setTab] = useState("score");
+  const [score, setScore] = useState<0 | 0.5 | 1 | null>(milestone.score);
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [showLinker, setShowLinker] = useState(false);
-  const [linkedPrograms, setLinkedPrograms] = useState<string[]>(m.linkedProgramIds);
+  const [linkedPrograms, setLinkedPrograms] = useState<string[]>(milestone.linkedProgramIds);
+  const fill = levelFillClass(levelIdx);
 
-  const passedCount = m.targets.filter((t) => t.status === "passed").length;
-  const progressPct = Math.round((passedCount / m.targets.length) * 100);
+  const mastered = milestone.subTargets.filter((t) => t.mastered).length;
 
   return (
     <div className="flex h-full flex-col">
-      {/* Sticky header */}
-      <SheetHeader className="space-y-3 border-b border-border bg-gradient-to-b from-surface to-card px-6 py-5">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          <span>{area.areaCode}</span>
+      <SheetHeader className="space-y-3 border-b border-border bg-surface px-6 py-5">
+        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <span>{area.code}</span>
           <ChevronRight className="size-3" />
           <span>{lv.label}</span>
           <ChevronRight className="size-3" />
-          <span>M{m.n}</span>
+          <span>M{milestone.n}</span>
         </div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <SheetTitle className="font-display text-2xl leading-tight">
-              {area.areaName}
+              {area.name} · M{milestone.n}
             </SheetTitle>
-            <SheetDescription className="mt-1">{m.criteria}</SheetDescription>
+            <SheetDescription className="mt-1">{milestone.criteria}</SheetDescription>
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1 text-[11px] font-bold ring-1 ring-inset",
-              meta.tile,
-              meta.ring,
-              meta.text,
-            )}
-          >
-            {meta.label}
-          </span>
-        </div>
-
-        {/* Progress bar */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {passedCount}/{m.targets.length} targets passed
-            </span>
-            <span className="tabular-nums font-medium text-foreground">{progressPct}%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full bg-success transition-all"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+          <ScoreChip score={milestone.score} fill={fill} />
         </div>
       </SheetHeader>
 
-      {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
         <TabsList className="mx-6 mt-4 grid grid-cols-4">
-          <TabsTrigger value="record">
+          <TabsTrigger value="score">
             <Sparkles className="mr-1.5 size-3.5" />
-            Record
+            Score
           </TabsTrigger>
-          <TabsTrigger value="targets">
+          <TabsTrigger value="sub">
             <TargetIcon className="mr-1.5 size-3.5" />
-            Targets
+            Sub-targets
             <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-              {m.targets.length}
+              {milestone.subTargets.length}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="programs">
             <Link2 className="mr-1.5 size-3.5" />
             Programs
-            <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-              {linkedPrograms.length}
-            </Badge>
+            {linkedPrograms.length > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
+                {linkedPrograms.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="history">
             <Clock className="mr-1.5 size-3.5" />
@@ -690,161 +648,96 @@ function MilestoneDetail({
           </TabsTrigger>
         </TabsList>
 
-        {/* RECORD — single panel with the most-used action */}
-        <TabsContent value="record" className="flex-1 px-6 py-5">
+        {/* SCORE — paper VB-MAPP 0 / 0.5 / 1 */}
+        <TabsContent value="score" className="flex-1 px-6 py-5">
           <div className="space-y-4">
             <div>
               <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Result for milestone
+                Score this milestone
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <ResultButton
-                  active={quickResult === "passed"}
-                  tone="success"
-                  icon={<CheckCircle2 className="size-4" />}
-                  label="Passed"
-                  onClick={() => setQuickResult("passed")}
-                />
-                <ResultButton
-                  active={quickResult === "failed"}
-                  tone="destructive"
-                  icon={<XCircle className="size-4" />}
-                  label="Failed"
-                  onClick={() => setQuickResult("failed")}
-                />
-                <ResultButton
-                  active={quickResult === "retest"}
-                  tone="warning"
-                  icon={<RotateCcw className="size-4" />}
-                  label="Retest"
-                  onClick={() => setQuickResult("retest")}
-                />
+                <ScoreButton active={score === 0} value={0} fill={fill} onClick={() => setScore(0)}>
+                  <Minus className="size-4" />
+                  <span>0 — Not acquired</span>
+                </ScoreButton>
+                <ScoreButton active={score === 0.5} value={0.5} fill={fill} onClick={() => setScore(0.5)}>
+                  <Sparkles className="size-4" />
+                  <span>½ — Emerging</span>
+                </ScoreButton>
+                <ScoreButton active={score === 1} value={1} fill={fill} onClick={() => setScore(1)}>
+                  <Check className="size-4" />
+                  <span>1 — Mastered</span>
+                </ScoreButton>
               </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                <strong>0.5 (emerging)</strong> is your highest-value target — skill is present but
+                inconsistent.
+              </p>
             </div>
 
-            <div className="grid grid-cols-[auto_1fr] gap-3">
-              <div>
-                <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Date
-                </div>
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="h-9 w-[150px]"
-                />
+            <div>
+              <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Date
               </div>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="h-9 w-[180px]"
+              />
             </div>
 
             <div>
               <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 <StickyNote className="size-3" />
-                Session notes (optional)
+                Clinical notes
               </div>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="What did you observe? Prompt level, stimuli used, distractors…"
+                placeholder="What did you observe? Prompt level, stimuli, settings, distractors…"
                 rows={3}
                 className="resize-none"
               />
             </div>
 
-            <Button className="w-full" disabled={!quickResult}>
-              Save result
+            <Button className="w-full" disabled={score === milestone.score}>
+              Save score
             </Button>
-
-            {/* Per-target quick recording */}
-            <div className="rounded-xl border border-border bg-surface p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Per-target quick recording
-                </div>
-                <span className="text-[10px] text-muted-foreground">Tap ✓/✕</span>
-              </div>
-              <div className="space-y-1.5">
-                {m.targets.map((t) => (
-                  <div
-                    key={t.code}
-                    className="flex items-center gap-2 rounded-lg bg-card px-2.5 py-2 ring-1 ring-inset ring-border"
-                  >
-                    <span className={cn("size-1.5 rounded-full shrink-0", STATUS_META[t.status].dot)} />
-                    <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
-                      {t.code}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs text-foreground">
-                      {t.text}
-                    </span>
-                    <button
-                      title="Mark passed"
-                      className="grid size-6 place-items-center rounded-md text-success ring-1 ring-inset ring-success/30 hover:bg-success/10"
-                    >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      title="Mark failed"
-                      className="grid size-6 place-items-center rounded-md text-destructive ring-1 ring-inset ring-destructive/30 hover:bg-destructive/10"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </TabsContent>
 
-        {/* TARGETS */}
-        <TabsContent value="targets" className="flex-1 px-6 py-5">
-          <div className="space-y-2">
-            {m.targets.map((t) => {
-              const tm = STATUS_META[t.status];
-              return (
-                <article
-                  key={t.code}
-                  className="rounded-xl border border-border bg-card p-3 shadow-soft"
+        {/* SUB-TARGETS */}
+        <TabsContent value="sub" className="flex-1 px-6 py-5">
+          <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {mastered}/{milestone.subTargets.length} sub-targets mastered
+            </span>
+            <span>From the Targets supplement</span>
+          </div>
+          <div className="space-y-1.5">
+            {milestone.subTargets.map((t) => (
+              <div
+                key={t.code}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-3 py-2.5",
+                  t.mastered ? "border-border bg-card" : "border-dashed border-border bg-background/40",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-4 shrink-0 place-items-center rounded-sm border-2",
+                    t.mastered ? cn(fill.border, fill.solid) : "border-border",
+                  )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("size-2 rounded-full", tm.dot)} />
-                        <span className="text-xs font-bold tabular-nums text-muted-foreground">
-                          {t.code}
-                        </span>
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wider", tm.text)}>
-                          {tm.label}
-                        </span>
-                      </div>
-                      <p className="mt-1.5 text-sm text-foreground/90">{t.text}</p>
-                      {t.linkedProgramIds.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {t.linkedProgramIds.map((pid) => {
-                            const p = PROGRAMS.find((x) => x.id === pid);
-                            if (!p) return null;
-                            return (
-                              <Badge key={pid} variant="secondary" className="text-[10px]">
-                                <Link2 className="mr-1 size-2.5" />
-                                {p.name}
-                              </Badge>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1">
-                      <Button size="sm" variant="outline" className="h-7 gap-1 text-xs">
-                        <Sparkles className="size-3" />
-                        Test
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs">
-                        <Link2 className="size-3" />
-                        Link
-                      </Button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                  {t.mastered && <Check className="size-2.5 text-white" />}
+                </span>
+                <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
+                  {t.code}
+                </span>
+                <span className="min-w-0 flex-1 text-xs text-foreground">{t.text}</span>
+              </div>
+            ))}
           </div>
         </TabsContent>
 
@@ -855,7 +748,7 @@ function MilestoneDetail({
               <div>
                 <h4 className="font-display text-sm font-semibold">Linked work programs</h4>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Programs feeding data into this milestone.
+                  Programs feeding trial data into this milestone.
                 </p>
               </div>
               <Button
@@ -871,11 +764,9 @@ function MilestoneDetail({
             {linkedPrograms.length === 0 && !showLinker && (
               <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
                 <Link2 className="mx-auto size-6 text-muted-foreground/60" />
-                <p className="mt-2 text-sm text-muted-foreground">
-                  No programs linked yet.
-                </p>
+                <p className="mt-2 text-sm text-muted-foreground">No programs linked yet.</p>
                 <p className="text-xs text-muted-foreground/80">
-                  Link a program so its trial data updates this milestone automatically.
+                  Link a program so trial data updates this milestone automatically.
                 </p>
               </div>
             )}
@@ -892,13 +783,11 @@ function MilestoneDetail({
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-foreground">{p.name}</div>
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {p.area} · whole milestone · requires mastered
+                        {p.area} · counts in progress
                       </div>
                     </div>
                     <button
-                      onClick={() =>
-                        setLinkedPrograms((prev) => prev.filter((x) => x !== pid))
-                      }
+                      onClick={() => setLinkedPrograms((prev) => prev.filter((x) => x !== pid))}
                       className="text-xs text-muted-foreground hover:text-destructive"
                     >
                       Unlink
@@ -919,39 +808,22 @@ function MilestoneDetail({
                       <SelectValue placeholder="Choose program…" />
                     </SelectTrigger>
                     <SelectContent>
-                      {PROGRAMS.filter((p) => !linkedPrograms.includes(p.id)).map(
-                        (p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name} ({p.area})
-                          </SelectItem>
-                        ),
-                      )}
+                      {PROGRAMS.filter((p) => !linkedPrograms.includes(p.id)).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} ({p.area})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select defaultValue="milestone">
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="milestone">Whole milestone</SelectItem>
-                        {m.targets.map((t) => (
-                          <SelectItem key={t.code} value={t.code}>
-                            Target {t.code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select defaultValue="mastered">
-                      <SelectTrigger className="h-9">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mastered">Requires mastered</SelectItem>
-                        <SelectItem value="in-progress">Counts in progress</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Select defaultValue="in-progress">
+                    <SelectTrigger className="h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in-progress">Counts toward emerging (0.5)</SelectItem>
+                      <SelectItem value="mastered">Requires mastered to award 1</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex justify-end gap-2 pt-1">
                     <Button size="sm" variant="ghost" onClick={() => setShowLinker(false)}>
                       Cancel
@@ -966,46 +838,36 @@ function MilestoneDetail({
 
         {/* HISTORY */}
         <TabsContent value="history" className="flex-1 px-6 py-5">
-          {m.history.length === 0 ? (
+          {milestone.history.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-10 text-center">
               <Clock className="mx-auto size-6 text-muted-foreground/60" />
-              <p className="mt-2 text-sm text-muted-foreground">No test events yet</p>
+              <p className="mt-2 text-sm text-muted-foreground">No scoring events yet</p>
               <p className="text-xs text-muted-foreground/80">
-                Recorded results will show up here as a timeline.
+                Reassessments will appear here so you can see score changes over time.
               </p>
             </div>
           ) : (
             <ol className="relative space-y-3 border-l border-border pl-5">
-              {m.history.map((h, i) => (
+              {milestone.history.map((h, i) => (
                 <li key={i} className="relative">
                   <span
                     className={cn(
                       "absolute -left-[26px] top-1 grid size-4 place-items-center rounded-full ring-4 ring-card",
-                      h.result === "passed"
-                        ? "bg-success"
-                        : h.result === "failed"
-                          ? "bg-destructive"
-                          : "bg-warning",
+                      h.score === 1 ? "bg-emerald-500" : h.score === 0.5 ? "bg-amber-500" : "bg-muted-foreground",
                     )}
                   >
-                    {h.result === "passed" && <Check className="size-2.5 text-white" />}
-                    {h.result === "failed" && <X className="size-2.5 text-white" />}
-                    {h.result === "retest" && <RotateCcw className="size-2.5 text-white" />}
+                    {h.score === 1 && <Check className="size-2.5 text-white" />}
+                    {h.score === 0.5 && <Sparkles className="size-2.5 text-white" />}
+                    {h.score === 0 && <X className="size-2.5 text-white" />}
                   </span>
                   <div className="rounded-lg border border-border bg-card p-3">
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold tabular-nums text-foreground">
-                          {h.scopeLabel}
-                        </span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="text-muted-foreground">{h.scope}</span>
-                      </div>
+                      <span className="font-bold tabular-nums text-foreground">
+                        Scored {scoreLabel(h.score)}
+                      </span>
                       <span className="tabular-nums text-muted-foreground">{h.date}</span>
                     </div>
-                    {h.notes && (
-                      <p className="mt-1.5 text-xs text-foreground/80">{h.notes}</p>
-                    )}
+                    {h.notes && <p className="mt-1.5 text-xs text-foreground/80">{h.notes}</p>}
                   </div>
                 </li>
               ))}
@@ -1017,93 +879,135 @@ function MilestoneDetail({
   );
 }
 
-/* ---------- Small components ---------- */
+/* ----------------------------------------------------------------------------
+ * Bits
+ * -------------------------------------------------------------------------- */
 
-function StatChip({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "success" | "primary" | "info" | "warning";
-}) {
-  const c =
-    tone === "success"
-      ? "text-success"
-      : tone === "primary"
-        ? "text-primary"
-        : tone === "info"
-          ? "text-info"
-          : tone === "warning"
-            ? "text-warning-foreground"
-            : "text-foreground";
-  return (
-    <div className="rounded-xl border border-border bg-card px-3 py-2.5 shadow-soft">
-      <div className={cn("font-display text-xl font-bold tabular-nums", c)}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function ResultButton({
-  active,
-  tone,
-  icon,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  tone: "success" | "destructive" | "warning";
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  const base =
-    tone === "success"
-      ? "border-success/40 text-success hover:bg-success/10"
-      : tone === "destructive"
-        ? "border-destructive/40 text-destructive hover:bg-destructive/10"
-        : "border-warning/40 text-warning-foreground hover:bg-warning/10";
-  const activeCls =
-    tone === "success"
-      ? "bg-success text-success-foreground border-success"
-      : tone === "destructive"
-        ? "bg-destructive text-destructive-foreground border-destructive"
-        : "bg-warning text-warning-foreground border-warning";
+function ViewToggle({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center justify-center gap-1.5 rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition",
-        active ? activeCls : cn("bg-card", base),
+        "rounded-md px-2.5 py-1 text-xs font-medium transition",
+        active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      {icon}
       {label}
     </button>
   );
 }
 
 function Legend() {
-  const items: { s: Status }[] = [
-    { s: "not-started" },
-    { s: "in-prep" },
-    { s: "ready" },
-    { s: "passed" },
-    { s: "failed" },
-    { s: "deferred" },
-  ];
   return (
-    <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-      {items.map(({ s }) => (
-        <span key={s} className="inline-flex items-center gap-1">
-          <span className={cn("size-2 rounded-full", STATUS_META[s].dot)} />
-          {STATUS_META[s].label}
+    <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="grid size-3.5 place-items-center rounded-[3px] border-2 border-dashed border-border bg-background/40 text-[7px] font-bold text-muted-foreground/50">
+          ?
         </span>
-      ))}
+        Not assessed
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="size-3.5 rounded-[3px] border-2 border-foreground/30 bg-background" />
+        0
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="relative grid size-3.5 place-items-center rounded-[3px] border-2 border-foreground/40 bg-background">
+          <span
+            className="absolute inset-[1px] rounded-[2px] bg-foreground/60"
+            style={{ clipPath: "polygon(0 100%, 100% 100%, 100% 0)" }}
+          />
+        </span>
+        ½ emerging
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="size-3.5 rounded-[3px] border-2 border-foreground/40 bg-foreground/60" />
+        1 mastered
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="grid size-3 place-items-center rounded-full bg-primary text-primary-foreground">
+          <Link2 className="size-1.5" strokeWidth={3} />
+        </span>
+        Program linked
+      </span>
     </div>
   );
+}
+
+function ScoreChip({ score, fill }: { score: Score; fill: ReturnType<typeof levelFillClass> }) {
+  if (score === null) {
+    return (
+      <span className="shrink-0 rounded-full border border-dashed border-border bg-background/40 px-3 py-1 text-[11px] font-bold text-muted-foreground">
+        Not assessed
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "shrink-0 rounded-full border-2 px-3 py-1 text-[11px] font-bold",
+        fill.border,
+        score === 1 ? cn(fill.solid, "text-white") : score === 0.5 ? "bg-background text-foreground" : "bg-background text-foreground",
+      )}
+    >
+      Score: {scoreLabel(score)}
+    </span>
+  );
+}
+
+function ScoreButton({
+  active,
+  value,
+  fill,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  value: 0 | 0.5 | 1;
+  fill: ReturnType<typeof levelFillClass>;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center justify-center gap-1 rounded-lg border-2 px-3 py-3 text-xs font-semibold transition",
+        active
+          ? value === 1
+            ? cn(fill.border, fill.solid, "text-white")
+            : value === 0.5
+              ? "border-amber-400 bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-200"
+              : "border-foreground/40 bg-foreground/5 text-foreground"
+          : "border-border bg-card text-muted-foreground hover:bg-surface",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ---------- helpers ---------- */
+
+function scoreLabel(s: Score): string {
+  if (s === null) return "—";
+  if (s === 0.5) return "0.5";
+  return String(s);
+}
+
+function formatScore(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+function levelHeaderBg(lvl: 0 | 1 | 2): string {
+  return ["bg-sky-50 dark:bg-sky-950/30", "bg-teal-50 dark:bg-teal-950/30", "bg-orange-50 dark:bg-orange-950/30"][lvl];
+}
+function levelCellBg(lvl: 0 | 1 | 2): string {
+  return ["bg-sky-50/30 dark:bg-sky-950/10", "bg-teal-50/30 dark:bg-teal-950/10", "bg-orange-50/30 dark:bg-orange-950/10"][lvl];
+}
+function levelFillClass(lvl: 0 | 1 | 2) {
+  return [
+    { solid: "bg-sky-500", border: "border-sky-400" },
+    { solid: "bg-teal-500", border: "border-teal-400" },
+    { solid: "bg-orange-500", border: "border-orange-400" },
+  ][lvl];
 }

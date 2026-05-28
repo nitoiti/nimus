@@ -100,6 +100,122 @@ const vbMappLevels = [
   { level: 3, range: "30–48m", mastered: 2, total: 2, status: "complete" as const },
 ];
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Skill map (VB-MAPP grid) — mirrors /skill-map.
+   16 areas × 3 developmental levels × 5 milestones per cell.
+   Same seeded distribution as skill-map.tsx so numbers stay in sync.
+   ────────────────────────────────────────────────────────────────────────── */
+
+type SkillScore = 0 | 0.5 | 1 | null;
+
+const SKILL_AREAS: { code: string; name: string; levels: [boolean, boolean, boolean] }[] = [
+  { code: "MND", name: "Mand", levels: [true, true, true] },
+  { code: "TCT", name: "Tact", levels: [true, true, true] },
+  { code: "LSN", name: "Listener", levels: [true, true, true] },
+  { code: "VPM", name: "VP-MTS", levels: [true, true, true] },
+  { code: "PLY", name: "Play", levels: [true, true, true] },
+  { code: "SOC", name: "Social", levels: [true, true, true] },
+  { code: "IMI", name: "Imitation", levels: [true, true, false] },
+  { code: "ECH", name: "Echoic", levels: [true, true, false] },
+  { code: "SVB", name: "Spont. vocal", levels: [true, false, false] },
+  { code: "LRF", name: "LRFFC", levels: [false, true, true] },
+  { code: "INT", name: "Intraverbal", levels: [false, true, true] },
+  { code: "GRP", name: "Classroom", levels: [false, true, true] },
+  { code: "LIN", name: "Linguistics", levels: [false, true, true] },
+  { code: "RED", name: "Reading", levels: [false, false, true] },
+  { code: "WRT", name: "Writing", levels: [false, false, true] },
+  { code: "MTH", name: "Math", levels: [false, false, true] },
+];
+
+const SKILL_LEVELS = [
+  { n: 1, label: "L1", age: "0–18m" },
+  { n: 2, label: "L2", age: "18–30m" },
+  { n: 3, label: "L3", age: "30–48m" },
+];
+
+function seeded(n: number) {
+  return Math.abs((Math.sin(n * 9301 + 49297) * 233280) % 1);
+}
+
+type CellStats = {
+  available: boolean;
+  mastered: number;
+  emerging: number;
+  failed: number;
+  unassessed: number;
+  total: number; // mastered + emerging counts toward "scored" denominator
+};
+
+const skillGrid: CellStats[][] = SKILL_AREAS.map((a, ai) =>
+  a.levels.map((available, lvl): CellStats => {
+    if (!available)
+      return { available: false, mastered: 0, emerging: 0, failed: 0, unassessed: 0, total: 0 };
+    let mastered = 0,
+      emerging = 0,
+      failed = 0,
+      unassessed = 0;
+    for (let i = 0; i < 5; i++) {
+      const milestoneN = lvl * 5 + i + 1;
+      const r = seeded(ai * 31 + milestoneN);
+      let s: SkillScore;
+      if (lvl === 0) s = r > 0.2 ? 1 : r > 0.08 ? 0.5 : r > 0.02 ? 0 : null;
+      else if (lvl === 1) s = r > 0.75 ? 1 : r > 0.45 ? 0.5 : r > 0.2 ? 0 : null;
+      else s = r > 0.9 ? 0.5 : r > 0.7 ? 0 : null;
+      if (s === 1) mastered++;
+      else if (s === 0.5) emerging++;
+      else if (s === 0) failed++;
+      else unassessed++;
+    }
+    return { available: true, mastered, emerging, failed, unassessed, total: 5 };
+  }),
+);
+
+const skillTotals = (() => {
+  let mastered = 0,
+    emerging = 0,
+    failed = 0,
+    unassessed = 0,
+    available = 0;
+  skillGrid.forEach((row) =>
+    row.forEach((c) => {
+      if (!c.available) return;
+      available += c.total;
+      mastered += c.mastered;
+      emerging += c.emerging;
+      failed += c.failed;
+      unassessed += c.unassessed;
+    }),
+  );
+  return { mastered, emerging, failed, unassessed, available };
+})();
+
+const skillLevelTotals = SKILL_LEVELS.map((_, lvl) => {
+  let mastered = 0,
+    emerging = 0,
+    available = 0;
+  skillGrid.forEach((row) => {
+    const c = row[lvl];
+    if (!c.available) return;
+    available += c.total;
+    mastered += c.mastered;
+    emerging += c.emerging;
+  });
+  return { mastered, emerging, available };
+});
+
+
+// Top areas to attack — most emerging milestones across all levels.
+const emergingQueue = SKILL_AREAS.map((a, ai) => {
+  const emerging = skillGrid[ai].reduce((sum, c) => sum + c.emerging, 0);
+  const mastered = skillGrid[ai].reduce((sum, c) => sum + c.mastered, 0);
+  const available = skillGrid[ai].reduce((sum, c) => sum + (c.available ? c.total : 0), 0);
+  return { code: a.code, name: a.name, emerging, mastered, available };
+})
+  .filter((a) => a.emerging > 0)
+  .sort((a, b) => b.emerging - a.emerging)
+  .slice(0, 6);
+
+
 const activePrograms = [
   {
     id: "p-self-help-brush",
@@ -189,6 +305,10 @@ function Analytics() {
         <MasteryTrajectoryCard />
       </div>
 
+      <div className="mb-6">
+        <SkillMapCard />
+      </div>
+
       <div className="mb-6 grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <IndependenceTrendCard />
@@ -197,6 +317,7 @@ function Analytics() {
           <VbMappCard />
         </div>
       </div>
+
 
       <PromptByAreaCard />
       <ActiveTargetsCard />
@@ -544,6 +665,272 @@ function VbMappCard() {
     </Card>
   );
 }
+
+function SkillMapCard() {
+  const overallPct = Math.round((skillTotals.mastered / skillTotals.available) * 100);
+  const emergingPct = Math.round((skillTotals.emerging / skillTotals.available) * 100);
+  const unassessedPct = Math.round(
+    ((skillTotals.unassessed + skillTotals.failed) / skillTotals.available) * 100,
+  );
+
+  return (
+    <Card
+      title="Skill map (VB-MAPP) — coverage"
+      subtitle="Same grid as the Skill map page: 16 areas × 3 developmental levels. Each cell shows % mastered of milestones available at that level; emerging-skill counts feed the queue on the right."
+    >
+      <div className="grid gap-5 lg:grid-cols-5">
+        {/* LEFT: summary + per-level + heatmap */}
+        <div className="lg:col-span-3">
+          <div className="grid grid-cols-3 gap-3">
+            <SkillStat
+              label="Mastered"
+              value={`${overallPct}%`}
+              detail={`${skillTotals.mastered}/${skillTotals.available} milestones`}
+              tone="success"
+            />
+            <SkillStat
+              label="Emerging"
+              value={String(skillTotals.emerging)}
+              detail="targets in progress"
+              tone="info"
+            />
+            <SkillStat
+              label="Not assessed"
+              value={`${unassessedPct}%`}
+              detail={`${skillTotals.unassessed + skillTotals.failed} milestones`}
+              tone="muted"
+            />
+          </div>
+
+          {/* per-level bars */}
+          <div className="mt-4 space-y-2">
+            {SKILL_LEVELS.map((lv, i) => {
+              const t = skillLevelTotals[i];
+              const pct = t.available ? Math.round((t.mastered / t.available) * 100) : 0;
+              return (
+                <div key={lv.n} className="flex items-center gap-3">
+                  <div className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {lv.label}
+                    <span className="ml-1 text-muted-foreground/70 normal-case">{lv.age}</span>
+                  </div>
+                  <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                      style={{ width: `${pct}%` }}
+                    />
+                    {t.emerging > 0 && (
+                      <div
+                        className="absolute inset-y-0 rounded-full bg-info/40"
+                        style={{
+                          left: `${pct}%`,
+                          width: `${Math.round((t.emerging / t.available) * 100)}%`,
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="w-32 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+                    <span className="font-semibold text-foreground">{t.mastered}</span>/
+                    {t.available} mastered
+                    {t.emerging > 0 && (
+                      <span className="ml-1.5 text-info">· {t.emerging} emerging</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* heatmap */}
+          <div className="mt-5">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Coverage by area × level
+              </p>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span>Low</span>
+                <span className="h-2.5 w-20 rounded-sm bg-gradient-to-r from-muted via-info/40 to-primary" />
+                <span>High</span>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-separate" style={{ borderSpacing: 3 }}>
+                <thead>
+                  <tr>
+                    <th className="w-24 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Area
+                    </th>
+                    {SKILL_LEVELS.map((lv) => (
+                      <th
+                        key={lv.n}
+                        className="text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                      >
+                        {lv.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {SKILL_AREAS.map((a, ai) => (
+                    <tr key={a.code}>
+                      <td className="py-0.5 pr-2 text-xs font-medium text-foreground">{a.name}</td>
+                      {SKILL_LEVELS.map((_, lvl) => {
+                        const c = skillGrid[ai][lvl];
+                        if (!c.available)
+                          return (
+                            <td key={lvl}>
+                              <div className="h-7 rounded-md border border-dashed border-border/50 bg-transparent" />
+                            </td>
+                          );
+                        const pct = (c.mastered / c.total) * 100;
+                        const bg =
+                          pct >= 80
+                            ? "oklch(0.52 0.21 280)"
+                            : pct >= 50
+                              ? "oklch(0.7 0.13 250)"
+                              : pct >= 20
+                                ? "oklch(0.85 0.07 250)"
+                                : c.emerging > 0
+                                  ? "oklch(0.93 0.04 250)"
+                                  : "oklch(0.96 0.005 250)";
+                        const fg = pct >= 50 ? "oklch(0.98 0 0)" : "oklch(0.32 0.04 264)";
+                        return (
+                          <td key={lvl}>
+                            <div
+                              className="grid h-7 place-items-center rounded-md text-[10px] font-semibold tabular-nums"
+                              style={{ background: bg, color: fg }}
+                              title={`${a.name} · L${lvl + 1} — ${c.mastered}/${c.total} mastered, ${c.emerging} emerging`}
+                            >
+                              {Math.round(pct)}%
+                              {c.emerging > 0 && (
+                                <span
+                                  className="ml-1 inline-block size-1.5 rounded-full"
+                                  style={{
+                                    background:
+                                      pct >= 50 ? "oklch(0.95 0.05 75)" : "oklch(0.7 0.16 75)",
+                                  }}
+                                />
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+              <Legend swatch="bg-primary" label="≥80% mastered" />
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="size-2 rounded-full"
+                  style={{ background: "oklch(0.7 0.16 75)" }}
+                />
+                Dot = has emerging targets
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-3 rounded-sm border border-dashed border-border" />
+                Not available at this level
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: emerging queue */}
+        <div className="lg:col-span-2">
+          <div className="rounded-xl border border-border bg-surface/40 p-4">
+            <div className="flex items-baseline justify-between">
+              <h4 className="text-sm font-semibold text-foreground">Emerging — top of queue</h4>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-info">
+                {skillTotals.emerging} total
+              </span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              Areas with the most emerging milestones (scored 0.5). These are the natural next
+              acquisition targets — link a program to each.
+            </p>
+            <div className="mt-3 space-y-2">
+              {emergingQueue.map((a) => {
+                const masteredPct = a.available
+                  ? Math.round((a.mastered / a.available) * 100)
+                  : 0;
+                return (
+                  <div
+                    key={a.code}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="truncate text-sm font-medium text-foreground">
+                          {a.name}
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {a.code}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary"
+                          style={{ width: `${masteredPct}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {a.mastered}/{a.available} mastered · {masteredPct}%
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-display text-xl font-bold tabular-nums text-info">
+                        {a.emerging}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        emerging
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-3 flex items-center justify-end text-xs">
+              <a
+                href="/skill-map"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+              >
+                Open skill map <ChevronRight className="size-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function SkillStat({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone: "success" | "info" | "muted";
+}) {
+  const valueClass =
+    tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-foreground";
+  return (
+    <div className="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div className={`mt-0.5 font-display text-xl font-bold tabular-nums ${valueClass}`}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-[10px] text-muted-foreground">{detail}</div>
+    </div>
+  );
+}
+
 
 function PromptByAreaCard() {
   const data = [...promptByArea].sort((a, b) => a.indep - b.indep);

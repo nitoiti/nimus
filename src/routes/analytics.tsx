@@ -1009,33 +1009,43 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
         <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
         {f.etaDate && (
           <div className="mt-0.5 text-[11px] text-muted-foreground">
-            ~{new Date(f.etaDate).toLocaleDateString("en", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}{" "}
-            · at {f.weekly.toFixed(2)}/wk for this level
-          </div>
-        )}
-        {isStalled && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
-            4 weeks. Review programs linked to this level.
-          </div>
-        )}
-        {isSlowing && (
-          <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
-            <AlertTriangle className="size-3" /> Pace slowing — forecast widening
-          </div>
+      <div className="mt-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {isComplete ? "Status" : "Projected to complete"}
+        </div>
+        {isComplete ? (
+          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+        ) : isStalled ? (
+          <>
+            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
+              4 weeks. Review programs linked to this level.
+            </div>
+          </>
+        ) : f.etaDate ? (
+          <>
+            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>
+              {new Date(f.etaDate).toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {f.etaLabel} away · at {f.weekly.toFixed(2)}/wk for this level
+            </div>
+            {isSlowing && (
+              <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
+                <AlertTriangle className="size-3" /> Pace slowing — date may slip
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
         )}
       </div>
-    </div>
-  );
-}
 
-function MoversList({
-  title,
-  subtitle,
   tone,
   items,
 }: {

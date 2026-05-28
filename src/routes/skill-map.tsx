@@ -1089,12 +1089,6 @@ function Legend() {
         <span className="size-3.5 rounded-[3px] border-2 border-foreground/40 bg-foreground/60" />
         1 mastered
       </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span className="grid size-3 place-items-center rounded-full bg-primary text-primary-foreground">
-          <Link2 className="size-1.5" strokeWidth={3} />
-        </span>
-        Program linked
-      </span>
     </div>
   );
 }

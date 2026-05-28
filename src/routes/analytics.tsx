@@ -218,8 +218,8 @@ function HeroInsight() {
           </p>
           <h2 className="mt-1 font-display text-xl font-semibold leading-snug sm:text-2xl">
             Independence trending up <span className="text-success">+8%</span> over 4 weeks ·{" "}
-            <span className="text-warning-foreground/90">2 targets stalled</span> in Self-Help and
-            Listener Behavior.
+            <span style={{ color: "oklch(0.85 0.16 75)" }}>2 programs stalled</span> in Self-Help
+            and Listener Behavior.
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/75">
             Live tracking is 14 weeks in. Trial volume is steady (~22/day) and prompt dependency in

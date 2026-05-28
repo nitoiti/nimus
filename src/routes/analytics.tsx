@@ -551,7 +551,7 @@ function PromptByAreaCard() {
     <div className="mb-6">
       <Card
         title="Prompt dependency by VB-MAPP area"
-        subtitle="Live trials only. High prompt % flags where fading plans need attention."
+        subtitle="Based on trial-level data only. Areas with no live trials in this range are hidden — they don't appear as empty bars."
       >
         <div className="h-72 w-full">
           <ResponsiveContainer>

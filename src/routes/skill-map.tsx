@@ -479,9 +479,8 @@ function MilestoneSquare({
   onClick: () => void;
 }) {
   const fill = levelFillClass(levelIdx);
-  const linked = m.linkedProgramIds.length > 0;
 
-  // In "targeting" view, dim everything that's not an action item (0.5 emerging or null with linked program)
+  // In "targeting" view, dim everything that's not an action item (0.5 emerging)
   const isAction = m.score === 0.5;
   const dimmed = view === "targeting" && !isAction && m.score !== null;
 
@@ -495,17 +494,13 @@ function MilestoneSquare({
   } else if (m.score === 1) {
     inner = <span className={cn("absolute inset-[3px] rounded-[3px]", fill.solid)} />;
   } else if (m.score === 0.5) {
-    // Diagonal half-fill — emerging
     inner = (
       <span
         className={cn("absolute inset-[3px] rounded-[3px]", fill.solid)}
-        style={{
-          clipPath: "polygon(0 100%, 100% 100%, 100% 0)",
-        }}
+        style={{ clipPath: "polygon(0 100%, 100% 100%, 100% 0)" }}
       />
     );
   } else {
-    // 0 — assessed but not acquired (empty box, solid border)
     inner = null;
   }
 
@@ -527,14 +522,6 @@ function MilestoneSquare({
       <span className="absolute -bottom-3.5 text-[8px] font-bold tabular-nums text-muted-foreground">
         M{m.n}
       </span>
-      {linked && (
-        <span
-          title="Program linked"
-          className="absolute -right-1 -top-1 grid size-3 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm"
-        >
-          <Link2 className="size-2" strokeWidth={3} />
-        </span>
-      )}
     </button>
   );
 }

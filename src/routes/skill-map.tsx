@@ -164,20 +164,33 @@ function buildGrid(): Grid {
           mastered: score === 1 || (score === 0.5 && ti < Math.floor(subCount / 2)),
         }));
 
-        const history: ScoreEvent[] = [];
+        const history: HistoryEvent[] = [];
         if (score === 1) {
-          history.push({ date: `2026-0${(ai % 4) + 1}-${10 + i}`, score: 1, notes: "Met criterion across 3 sessions." });
+          history.push({ kind: "score", date: `2026-0${(ai % 4) + 1}-${10 + i}`, score: 1, notes: "Met criterion across 3 sessions." });
         } else if (score === 0.5) {
-          history.push({ date: `2026-04-${10 + i}`, score: 0, notes: "Below criterion — needs more reps." });
-          history.push({ date: `2026-05-${10 + i}`, score: 0.5, notes: "Inconsistent across stimuli." });
+          history.push({ kind: "score", date: `2026-04-${10 + i}`, score: 0, notes: "Below criterion — needs more reps." });
+          history.push({ kind: "score", date: `2026-05-${10 + i}`, score: 0.5, notes: "Inconsistent across stimuli." });
         }
+
+        const links: ProgramLink[] =
+          score === 0.5
+            ? [
+                {
+                  id: `lnk-${ai}-${milestoneN}`,
+                  programId: PROGRAMS[ai % PROGRAMS.length].id,
+                  scope: "milestone",
+                  trigger: "mastered",
+                  closes: "milestone",
+                },
+              ]
+            : [];
 
         return {
           n: milestoneN,
           criteria: criterionText(a.code, milestoneN),
           score,
           subTargets,
-          linkedProgramIds: score === 0.5 ? [PROGRAMS[ai % PROGRAMS.length].id] : [],
+          links,
           history,
         };
       });

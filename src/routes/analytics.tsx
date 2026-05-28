@@ -871,63 +871,66 @@ function SkillMapCard() {
       </div>
 
       {/* Weekly velocity sparkline */}
-      <div className="mt-5">
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Weekly closures — last 12 weeks
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Avg{" "}
-            <span className="font-semibold text-foreground tabular-nums">
-              {(sumDelta(recent12w) / 12).toFixed(1)}
-            </span>{" "}
-            / week
-          </p>
+      {sumDelta(recent12w) > 0 ? (
+        <div className="mt-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Weekly closures — last 12 weeks
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Avg{" "}
+              <span className="font-semibold text-foreground tabular-nums">
+                {(sumDelta(recent12w) / 12).toFixed(1)}
+              </span>{" "}
+              / week
+            </p>
+          </div>
+          <div className="h-24 w-full">
+            <ResponsiveContainer>
+              <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                  tickFormatter={(v) =>
+                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                  }
+                  minTickGap={30}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={28}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid oklch(0.9 0.01 250)",
+                    fontSize: 12,
+                  }}
+                  labelFormatter={(v) =>
+                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                  }
+                  formatter={(v: number) => [v, "Mastered"]}
+                />
+                <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
+                  {recent12w.map((d, i) => (
+                    <Cell
+                      key={i}
+                      fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="h-24 w-full">
-          <ResponsiveContainer>
-            <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-              <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                tickFormatter={(v) =>
-                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                }
-                minTickGap={30}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                axisLine={false}
-                tickLine={false}
-                width={28}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  border: "1px solid oklch(0.9 0.01 250)",
-                  fontSize: 12,
-                }}
-                labelFormatter={(v) =>
-                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                }
-                formatter={(v: number) => [v, "Mastered"]}
-              />
-              <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
-                {recent12w.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      ) : null}
+
 
       {/* Movers */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">

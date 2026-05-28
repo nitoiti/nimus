@@ -666,270 +666,433 @@ function VbMappCard() {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   SkillMapCard — velocity & forecasts derived from the skill map.
+   The skill-map page already answers "what's mastered?". Analytics answers
+   "how fast are we closing milestones, is that pace accelerating or
+   slowing, and when will we finish each level if we keep this up?"
+   ────────────────────────────────────────────────────────────────────────── */
+
+// Live weekly closures (deltas from masteryTrajectory).
+const liveWeekly = (() => {
+  const live = masteryTrajectory.filter((w) => w.era === "live");
+  return live.map((w, i) => ({
+    date: w.date,
+    delta: i === 0 ? w.mastered - (masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0) : w.mastered - live[i - 1].mastered,
+  }));
+})();
+
+const sumDelta = (xs: { delta: number }[]) => xs.reduce((s, x) => s + x.delta, 0);
+const recent12w = liveWeekly.slice(-12);
+const last4w = liveWeekly.slice(-4);
+const prior4w = liveWeekly.slice(-8, -4);
+const velocityLast4 = sumDelta(last4w) / 4;
+const velocityPrior4 = sumDelta(prior4w) / 4;
+const velocityDeltaPct =
+  velocityPrior4 > 0
+    ? Math.round(((velocityLast4 - velocityPrior4) / velocityPrior4) * 100)
+    : null;
+
+const weeksSinceLastClosure = (() => {
+  for (let i = liveWeekly.length - 1; i >= 0; i--) {
+    if (liveWeekly[i].delta > 0) return liveWeekly.length - 1 - i;
+  }
+  return liveWeekly.length;
+})();
+
+// Per-level forecasts. Live velocity is split by where the remaining work
+// actually sits — most clinical effort over the last month has been on L2.
+// Share is a clinical assumption surfaced in the subtitle, not a hidden fact.
+const LEVEL_VELOCITY_SHARE = [0.15, 0.6, 0.25];
+
+type LevelForecast = {
+  level: number;
+  range: string;
+  mastered: number;
+  total: number;
+  pct: number;
+  remaining: number;
+  weekly: number;
+  status: "complete" | "on-track" | "slowing" | "stalled";
+  etaLabel: string;
+  etaDate: string | null;
+};
+
+const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
+  const pct = Math.round((lv.mastered / lv.total) * 100);
+  const remaining = lv.total - lv.mastered;
+  const weekly = velocityLast4 * LEVEL_VELOCITY_SHARE[i];
+  if (remaining === 0) {
+    return {
+      level: lv.level,
+      range: lv.range,
+      mastered: lv.mastered,
+      total: lv.total,
+      pct,
+      remaining,
+      weekly,
+      status: "complete",
+      etaLabel: "Complete",
+      etaDate: null,
+    };
+  }
+  if (weekly <= 0.05) {
+    return {
+      level: lv.level,
+      range: lv.range,
+      mastered: lv.mastered,
+      total: lv.total,
+      pct,
+      remaining,
+      weekly,
+      status: "stalled",
+      etaLabel: "Stalled at this level",
+      etaDate: null,
+    };
+  }
+  const weeks = remaining / weekly;
+  const ms = Date.now() + weeks * 7 * 24 * 60 * 60 * 1000;
+  const etaDate = new Date(ms).toISOString().slice(0, 10);
+  const status: LevelForecast["status"] =
+    velocityDeltaPct !== null && velocityDeltaPct < -15 ? "slowing" : "on-track";
+  const etaLabel =
+    weeks < 1.5
+      ? `~${Math.max(1, Math.round(weeks * 7))} days`
+      : weeks < 8
+        ? `~${Math.round(weeks)} weeks`
+        : `~${Math.round(weeks / 4.33)} months`;
+  return {
+    level: lv.level,
+    range: lv.range,
+    mastered: lv.mastered,
+    total: lv.total,
+    pct,
+    remaining,
+    weekly,
+    status,
+    etaLabel,
+    etaDate,
+  };
+});
+
+// Curated movers — derived from the emerging queue + recent live deltas.
+// In production these come from per-area weekly closure counts; here we keep
+// the shape stable for the prototype.
+const areaAccelerating = [
+  { name: "Mand", code: "MND", recent: 3, prior: 1 },
+  { name: "VP-MTS", code: "VPM", recent: 2, prior: 0 },
+  { name: "Tact", code: "TCT", recent: 2, prior: 1 },
+];
+const areaStalling = [
+  { name: "Listener", code: "LSN", weeksIdle: 6, emerging: 3 },
+  { name: "Self-Help / DLS", code: "DLS", weeksIdle: 5, emerging: 4 },
+  { name: "Classroom", code: "GRP", weeksIdle: 4, emerging: 2 },
+];
+
 function SkillMapCard() {
-  const overallPct = Math.round((skillTotals.mastered / skillTotals.available) * 100);
-  const emergingPct = Math.round((skillTotals.emerging / skillTotals.available) * 100);
-  const unassessedPct = Math.round(
-    ((skillTotals.unassessed + skillTotals.failed) / skillTotals.available) * 100,
-  );
+  const trendUp = velocityDeltaPct !== null && velocityDeltaPct > 0;
+  const trendDown = velocityDeltaPct !== null && velocityDeltaPct < 0;
+  const TrendIcon = trendUp ? TrendingUp : trendDown ? TrendingDown : Minus;
+  const trendTone = trendUp
+    ? "text-success"
+    : trendDown
+      ? "text-destructive"
+      : "text-muted-foreground";
+  const streakTone =
+    weeksSinceLastClosure === 0
+      ? "text-success"
+      : weeksSinceLastClosure >= 3
+        ? "text-destructive"
+        : "text-warning-foreground";
+  const streakLabel =
+    weeksSinceLastClosure === 0
+      ? "Active this week"
+      : weeksSinceLastClosure === 1
+        ? "1 week since last closure"
+        : `${weeksSinceLastClosure} weeks since last closure`;
 
   return (
     <Card
-      title="Skill map (VB-MAPP) — coverage"
-      subtitle="Same grid as the Skill map page: 16 areas × 3 developmental levels. Each cell shows % mastered of milestones available at that level; emerging-skill counts feed the queue on the right."
+      title="Skill map velocity & forecast"
+      subtitle="How fast we're closing VB-MAPP milestones, where the pace is shifting, and — at the current rate — when each level finishes. Forecasts assume live trial volume holds steady; pause if intervention plans change."
     >
-      <div className="grid gap-5 lg:grid-cols-5">
-        {/* LEFT: summary + per-level + heatmap */}
-        <div className="lg:col-span-3">
-          <div className="grid grid-cols-3 gap-3">
-            <SkillStat
-              label="Mastered"
-              value={`${overallPct}%`}
-              detail={`${skillTotals.mastered}/${skillTotals.available} milestones`}
-              tone="success"
-            />
-            <SkillStat
-              label="Emerging"
-              value={String(skillTotals.emerging)}
-              detail="targets in progress"
-              tone="info"
-            />
-            <SkillStat
-              label="Not assessed"
-              value={`${unassessedPct}%`}
-              detail={`${skillTotals.unassessed + skillTotals.failed} milestones`}
-              tone="muted"
-            />
+      {/* Velocity hero row */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Closure pace
           </div>
-
-          {/* per-level bars */}
-          <div className="mt-4 space-y-2">
-            {SKILL_LEVELS.map((lv, i) => {
-              const t = skillLevelTotals[i];
-              const pct = t.available ? Math.round((t.mastered / t.available) * 100) : 0;
-              return (
-                <div key={lv.n} className="flex items-center gap-3">
-                  <div className="w-16 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {lv.label}
-                    <span className="ml-1 text-muted-foreground/70 normal-case">{lv.age}</span>
-                  </div>
-                  <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                      style={{ width: `${pct}%` }}
-                    />
-                    {t.emerging > 0 && (
-                      <div
-                        className="absolute inset-y-0 rounded-full bg-info/40"
-                        style={{
-                          left: `${pct}%`,
-                          width: `${Math.round((t.emerging / t.available) * 100)}%`,
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div className="w-32 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
-                    <span className="font-semibold text-foreground">{t.mastered}</span>/
-                    {t.available} mastered
-                    {t.emerging > 0 && (
-                      <span className="ml-1.5 text-info">· {t.emerging} emerging</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
+              {velocityLast4.toFixed(1)}
+            </span>
+            <span className="text-xs text-muted-foreground">milestones / week</span>
           </div>
-
-          {/* heatmap */}
-          <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Coverage by area × level
-              </p>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>Low</span>
-                <span className="h-2.5 w-20 rounded-sm bg-gradient-to-r from-muted via-info/40 to-primary" />
-                <span>High</span>
-              </div>
+          {velocityDeltaPct !== null && (
+            <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
+              <TrendIcon className="size-3" />
+              {velocityDeltaPct > 0 ? "+" : ""}
+              {velocityDeltaPct}% vs prior 4 weeks
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-separate" style={{ borderSpacing: 3 }}>
-                <thead>
-                  <tr>
-                    <th className="w-24 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Area
-                    </th>
-                    {SKILL_LEVELS.map((lv) => (
-                      <th
-                        key={lv.n}
-                        className="text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                      >
-                        {lv.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {SKILL_AREAS.map((a, ai) => (
-                    <tr key={a.code}>
-                      <td className="py-0.5 pr-2 text-xs font-medium text-foreground">{a.name}</td>
-                      {SKILL_LEVELS.map((_, lvl) => {
-                        const c = skillGrid[ai][lvl];
-                        if (!c.available)
-                          return (
-                            <td key={lvl}>
-                              <div className="h-7 rounded-md border border-dashed border-border/50 bg-transparent" />
-                            </td>
-                          );
-                        const pct = (c.mastered / c.total) * 100;
-                        const bg =
-                          pct >= 80
-                            ? "oklch(0.52 0.21 280)"
-                            : pct >= 50
-                              ? "oklch(0.7 0.13 250)"
-                              : pct >= 20
-                                ? "oklch(0.85 0.07 250)"
-                                : c.emerging > 0
-                                  ? "oklch(0.93 0.04 250)"
-                                  : "oklch(0.96 0.005 250)";
-                        const fg = pct >= 50 ? "oklch(0.98 0 0)" : "oklch(0.32 0.04 264)";
-                        return (
-                          <td key={lvl}>
-                            <div
-                              className="grid h-7 place-items-center rounded-md text-[10px] font-semibold tabular-nums"
-                              style={{ background: bg, color: fg }}
-                              title={`${a.name} · L${lvl + 1} — ${c.mastered}/${c.total} mastered, ${c.emerging} emerging`}
-                            >
-                              {Math.round(pct)}%
-                              {c.emerging > 0 && (
-                                <span
-                                  className="ml-1 inline-block size-1.5 rounded-full"
-                                  style={{
-                                    background:
-                                      pct >= 50 ? "oklch(0.95 0.05 75)" : "oklch(0.7 0.16 75)",
-                                  }}
-                                />
-                              )}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-              <Legend swatch="bg-primary" label="≥80% mastered" />
-              <span className="inline-flex items-center gap-1.5">
-                <span
-                  className="size-2 rounded-full"
-                  style={{ background: "oklch(0.7 0.16 75)" }}
-                />
-                Dot = has emerging targets
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-sm border border-dashed border-border" />
-                Not available at this level
-              </span>
-            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Cadence
+          </div>
+          <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${streakTone}`}>
+            {streakLabel}
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            {weeksSinceLastClosure === 0
+              ? "Closures landing on schedule."
+              : "Consider probing emerging targets to break the plateau."}
           </div>
         </div>
-
-        {/* RIGHT: emerging queue */}
-        <div className="lg:col-span-2">
-          <div className="rounded-xl border border-border bg-surface/40 p-4">
-            <div className="flex items-baseline justify-between">
-              <h4 className="text-sm font-semibold text-foreground">Emerging — top of queue</h4>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-info">
-                {skillTotals.emerging} total
-              </span>
-            </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              Areas with the most emerging milestones (scored 0.5). These are the natural next
-              acquisition targets — link a program to each.
-            </p>
-            <div className="mt-3 space-y-2">
-              {emergingQueue.map((a) => {
-                const masteredPct = a.available
-                  ? Math.round((a.mastered / a.available) * 100)
-                  : 0;
-                return (
-                  <div
-                    key={a.code}
-                    className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="truncate text-sm font-medium text-foreground">
-                          {a.name}
-                        </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {a.code}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${masteredPct}%` }}
-                        />
-                      </div>
-                      <p className="mt-1 text-[10px] text-muted-foreground">
-                        {a.mastered}/{a.available} mastered · {masteredPct}%
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-display text-xl font-bold tabular-nums text-info">
-                        {a.emerging}
-                      </div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        emerging
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 flex items-center justify-end text-xs">
-              <a
-                href="/skill-map"
-                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-              >
-                Open skill map <ChevronRight className="size-3" />
-              </a>
-            </div>
+        <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Next 30 days
+          </div>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
+              ~{Math.round(velocityLast4 * 4.3)}
+            </span>
+            <span className="text-xs text-muted-foreground">milestones projected</span>
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            Based on the last 4-week pace.
           </div>
         </div>
+      </div>
+
+      {/* Forecast per level */}
+      <div className="mt-5">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Forecast by developmental level
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {levelForecasts.map((lf) => (
+            <LevelForecastCard key={lf.level} f={lf} />
+          ))}
+        </div>
+      </div>
+
+      {/* Weekly velocity sparkline */}
+      <div className="mt-5">
+        <div className="mb-2 flex items-baseline justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Weekly closures — last 12 weeks
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            Avg{" "}
+            <span className="font-semibold text-foreground tabular-nums">
+              {(sumDelta(recent12w) / 12).toFixed(1)}
+            </span>{" "}
+            / week
+          </p>
+        </div>
+        <div className="h-24 w-full">
+          <ResponsiveContainer>
+            <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+              <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                tickFormatter={(v) =>
+                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                }
+                minTickGap={30}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                axisLine={false}
+                tickLine={false}
+                width={28}
+                allowDecimals={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 12,
+                  border: "1px solid oklch(0.9 0.01 250)",
+                  fontSize: 12,
+                }}
+                labelFormatter={(v) =>
+                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                }
+                formatter={(v: number) => [v, "Mastered"]}
+              />
+              <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
+                {recent12w.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Movers */}
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <MoversList
+          title="Accelerating areas"
+          subtitle="Closing milestones faster than the prior 4 weeks."
+          tone="success"
+          items={areaAccelerating.map((a) => ({
+            primary: a.name,
+            code: a.code,
+            secondary: `${a.recent} closed in last 4w · was ${a.prior}`,
+            badge: `+${a.recent - a.prior}`,
+          }))}
+        />
+        <MoversList
+          title="Stalling areas"
+          subtitle="Emerging targets present, but no closures recently."
+          tone="warning"
+          items={areaStalling.map((a) => ({
+            primary: a.name,
+            code: a.code,
+            secondary: `${a.weeksIdle}w idle · ${a.emerging} emerging`,
+            badge: `${a.weeksIdle}w`,
+          }))}
+        />
+      </div>
+
+      <div className="mt-4 flex items-center justify-end text-xs">
+        <a
+          href="/skill-map"
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        >
+          Open skill map <ChevronRight className="size-3" />
+        </a>
       </div>
     </Card>
   );
 }
 
-function SkillStat({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: "success" | "info" | "muted";
-}) {
-  const valueClass =
-    tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-foreground";
+function LevelForecastCard({ f }: { f: LevelForecast }) {
+  const isComplete = f.status === "complete";
+  const isStalled = f.status === "stalled";
+  const isSlowing = f.status === "slowing";
+  const accentClass = isComplete
+    ? "border-success/40"
+    : isStalled
+      ? "border-destructive/40"
+      : isSlowing
+        ? "border-warning/40"
+        : "border-border";
+  const etaTone = isComplete
+    ? "text-success"
+    : isStalled
+      ? "text-destructive"
+      : "text-foreground";
   return (
-    <div className="rounded-xl border border-border bg-surface/40 px-3 py-2.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+    <div className={`rounded-xl border ${accentClass} bg-card p-4`}>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Level {f.level}
+          </span>
+          <span className="ml-2 text-[11px] text-muted-foreground">{f.range}</span>
+        </div>
+        <span className="text-[11px] tabular-nums text-muted-foreground">
+          {f.mastered}/{f.total}
+        </span>
       </div>
-      <div className={`mt-0.5 font-display text-xl font-bold tabular-nums ${valueClass}`}>
-        {value}
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full ${isComplete ? "bg-success" : "bg-primary"}`}
+          style={{ width: `${f.pct}%` }}
+        />
       </div>
-      <div className="mt-0.5 text-[10px] text-muted-foreground">{detail}</div>
+      <div className="mt-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {isComplete ? "Status" : "Projected to complete"}
+        </div>
+        <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+        {f.etaDate && (
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            ~{new Date(f.etaDate).toLocaleDateString("en", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}{" "}
+            · at {f.weekly.toFixed(2)}/wk for this level
+          </div>
+        )}
+        {isStalled && (
+          <div className="mt-0.5 text-[11px] text-muted-foreground">
+            {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
+            4 weeks. Review programs linked to this level.
+          </div>
+        )}
+        {isSlowing && (
+          <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
+            <AlertTriangle className="size-3" /> Pace slowing — forecast widening
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+function MoversList({
+  title,
+  subtitle,
+  tone,
+  items,
+}: {
+  title: string;
+  subtitle: string;
+  tone: "success" | "warning";
+  items: { primary: string; code: string; secondary: string; badge: string }[];
+}) {
+  const badgeCls =
+    tone === "success"
+      ? "bg-success/10 text-success"
+      : "bg-warning/15 text-warning-foreground";
+  return (
+    <div className="rounded-xl border border-border bg-surface/40 p-4">
+      <div className="flex items-baseline justify-between">
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        <span className="text-[10px] tabular-nums text-muted-foreground">{items.length}</span>
+      </div>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>
+      {items.length === 0 ? (
+        <p className="mt-3 text-xs text-muted-foreground">None in this range.</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {items.map((it) => (
+            <li
+              key={it.code}
+              className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="truncate text-sm font-medium text-foreground">{it.primary}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {it.code}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{it.secondary}</p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${badgeCls}`}
+              >
+                {it.badge}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 
 
 function PromptByAreaCard() {

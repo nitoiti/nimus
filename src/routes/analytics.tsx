@@ -234,10 +234,31 @@ function HeroInsight() {
 function KpiStrip() {
   return (
     <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Kpi label="Active targets" value="12" trend={null} />
-      <Kpi label="Mastered (90d, live)" value="9" trend="up" trendValue="+3 vs prev" tone="success" />
-      <Kpi label="Independence" value="68%" trend="up" trendValue="+8% / 4w" tone="success" />
-      <Kpi label="Prompt dependency" value="27%" trend="down" trendValue="−5% / 4w" tone="info" />
+      <Kpi label="Active programs" value="12" trend={null} />
+      <Kpi
+        label="Mastered (90d)"
+        value="9"
+        trend="up"
+        trendValue="+3 vs prev"
+        tone="success"
+        hint="Targets closed as mastered in the last 90 days. Includes both live and retrospective programs."
+      />
+      <Kpi
+        label="Independence"
+        value="68%"
+        trend="up"
+        trendValue="+8% / 4w"
+        tone="success"
+        hint="Share of independent (+) responses across live trials. Shows '—' when this child has no +/P trial data."
+      />
+      <Kpi
+        label="Prompt dependency"
+        value="27%"
+        trend="down"
+        trendValue="−5% / 4w"
+        tone="info"
+        hint="Share of prompted (P) responses across live trials. Lower is better. Hidden when no trial data exists."
+      />
       <Kpi label="Avg days to mastery" value="21" trend="flat" trendValue="live era" />
     </section>
   );
@@ -249,17 +270,26 @@ function Kpi({
   trend,
   trendValue,
   tone,
+  hint,
+  empty,
 }: {
   label: string;
   value: string;
   trend: "up" | "down" | "flat" | null;
   trendValue?: string;
   tone?: "success" | "info";
+  hint?: string;
+  empty?: boolean;
 }) {
   const valueClass =
-    tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-foreground";
+    empty
+      ? "text-muted-foreground"
+      : tone === "success"
+      ? "text-success"
+      : tone === "info"
+      ? "text-info"
+      : "text-foreground";
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  // For prompt dependency, "down" is good → tint success
   const trendTone =
     label.toLowerCase().includes("prompt") && trend === "down"
       ? "text-success"
@@ -270,16 +300,26 @@ function Kpi({
       : "text-muted-foreground";
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-3.5 shadow-soft">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="truncate">{label}</span>
+        {hint && (
+          <span title={hint} className="cursor-help">
+            <HelpCircle className="size-3 text-muted-foreground/60" />
+          </span>
+        )}
       </div>
       <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${valueClass}`}>
-        {value}
+        {empty ? "—" : value}
       </div>
-      {trend && trendValue && (
-        <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
-          <TrendIcon className="size-3" /> {trendValue}
-        </div>
+      {empty ? (
+        <div className="mt-1 text-[11px] text-muted-foreground">No trial data yet</div>
+      ) : (
+        trend &&
+        trendValue && (
+          <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
+            <TrendIcon className="size-3" /> {trendValue}
+          </div>
+        )
       )}
     </div>
   );

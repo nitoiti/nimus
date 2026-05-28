@@ -817,7 +817,7 @@ function SkillMapCard() {
       subtitle="How fast we're closing VB-MAPP milestones, where the pace is shifting, and — at the current rate — when each level finishes. Forecasts assume live trial volume holds steady; pause if intervention plans change."
     >
       {/* Velocity hero row */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Closure pace
@@ -828,42 +828,35 @@ function SkillMapCard() {
             </span>
             <span className="text-xs text-muted-foreground">milestones / week</span>
           </div>
-          {velocityDeltaPct !== null && (
+          {velocityDeltaPct !== null ? (
             <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
               <TrendIcon className="size-3" />
               {velocityDeltaPct > 0 ? "+" : ""}
               {velocityDeltaPct}% vs prior 4 weeks
             </div>
+          ) : (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Average over the last 4 weeks.
+            </div>
           )}
         </div>
         <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Cadence
+            Last closure
           </div>
           <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${streakTone}`}>
             {streakLabel}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
             {weeksSinceLastClosure === 0
-              ? "Closures landing on schedule."
-              : "Consider probing emerging targets to break the plateau."}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Next 30 days
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
-              ~{Math.round(velocityLast4 * 4.3)}
-            </span>
-            <span className="text-xs text-muted-foreground">milestones projected</span>
-          </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            Based on the last 4-week pace.
+              ? "A milestone was mastered in the current week."
+              : weeksSinceLastClosure < 3
+                ? "Pace is normal — keep probing emerging targets."
+                : "Long gap — review programs linked to stalled levels."}
           </div>
         </div>
       </div>
+
 
       {/* Forecast per level */}
       <div className="mt-5">

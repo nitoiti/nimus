@@ -817,7 +817,7 @@ function SkillMapCard() {
       subtitle="How fast we're closing VB-MAPP milestones, where the pace is shifting, and — at the current rate — when each level finishes. Forecasts assume live trial volume holds steady; pause if intervention plans change."
     >
       {/* Velocity hero row */}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Closure pace
@@ -828,42 +828,35 @@ function SkillMapCard() {
             </span>
             <span className="text-xs text-muted-foreground">milestones / week</span>
           </div>
-          {velocityDeltaPct !== null && (
+          {velocityDeltaPct !== null ? (
             <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
               <TrendIcon className="size-3" />
               {velocityDeltaPct > 0 ? "+" : ""}
               {velocityDeltaPct}% vs prior 4 weeks
             </div>
+          ) : (
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Average over the last 4 weeks.
+            </div>
           )}
         </div>
         <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Cadence
+            Last closure
           </div>
           <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${streakTone}`}>
             {streakLabel}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
             {weeksSinceLastClosure === 0
-              ? "Closures landing on schedule."
-              : "Consider probing emerging targets to break the plateau."}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Next 30 days
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold tabular-nums text-foreground">
-              ~{Math.round(velocityLast4 * 4.3)}
-            </span>
-            <span className="text-xs text-muted-foreground">milestones projected</span>
-          </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            Based on the last 4-week pace.
+              ? "A milestone was mastered in the current week."
+              : weeksSinceLastClosure < 3
+                ? "Pace is normal — keep probing emerging targets."
+                : "Long gap — review programs linked to stalled levels."}
           </div>
         </div>
       </div>
+
 
       {/* Forecast per level */}
       <div className="mt-5">
@@ -878,63 +871,66 @@ function SkillMapCard() {
       </div>
 
       {/* Weekly velocity sparkline */}
-      <div className="mt-5">
-        <div className="mb-2 flex items-baseline justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Weekly closures — last 12 weeks
-          </p>
-          <p className="text-[11px] text-muted-foreground">
-            Avg{" "}
-            <span className="font-semibold text-foreground tabular-nums">
-              {(sumDelta(recent12w) / 12).toFixed(1)}
-            </span>{" "}
-            / week
-          </p>
+      {sumDelta(recent12w) > 0 ? (
+        <div className="mt-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Weekly closures — last 12 weeks
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Avg{" "}
+              <span className="font-semibold text-foreground tabular-nums">
+                {(sumDelta(recent12w) / 12).toFixed(1)}
+              </span>{" "}
+              / week
+            </p>
+          </div>
+          <div className="h-24 w-full">
+            <ResponsiveContainer>
+              <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                  tickFormatter={(v) =>
+                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                  }
+                  minTickGap={30}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={28}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid oklch(0.9 0.01 250)",
+                    fontSize: 12,
+                  }}
+                  labelFormatter={(v) =>
+                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                  }
+                  formatter={(v: number) => [v, "Mastered"]}
+                />
+                <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
+                  {recent12w.map((d, i) => (
+                    <Cell
+                      key={i}
+                      fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="h-24 w-full">
-          <ResponsiveContainer>
-            <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-              <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                tickFormatter={(v) =>
-                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                }
-                minTickGap={30}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                axisLine={false}
-                tickLine={false}
-                width={28}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  border: "1px solid oklch(0.9 0.01 250)",
-                  fontSize: 12,
-                }}
-                labelFormatter={(v) =>
-                  new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                }
-                formatter={(v: number) => [v, "Mastered"]}
-              />
-              <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
-                {recent12w.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      ) : null}
+
 
       {/* Movers */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -962,14 +958,6 @@ function SkillMapCard() {
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-end text-xs">
-        <a
-          href="/skill-map"
-          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-        >
-          Open skill map <ChevronRight className="size-3" />
-        </a>
-      </div>
     </Card>
   );
 }
@@ -1013,27 +1001,36 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {isComplete ? "Status" : "Projected to complete"}
         </div>
-        <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
-        {f.etaDate && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            ~{new Date(f.etaDate).toLocaleDateString("en", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}{" "}
-            · at {f.weekly.toFixed(2)}/wk for this level
-          </div>
-        )}
-        {isStalled && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-            {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
-            4 weeks. Review programs linked to this level.
-          </div>
-        )}
-        {isSlowing && (
-          <div className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
-            <AlertTriangle className="size-3" /> Pace slowing — forecast widening
-          </div>
+        {isComplete ? (
+          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+        ) : isStalled ? (
+          <>
+            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
+              4 weeks. Review programs linked to this level.
+            </div>
+          </>
+        ) : f.etaDate ? (
+          <>
+            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>
+              {new Date(f.etaDate).toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {f.etaLabel} away · at {f.weekly.toFixed(2)}/wk for this level
+            </div>
+            {isSlowing && (
+              <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
+                <AlertTriangle className="size-3" /> Pace slowing — date may slip
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
         )}
       </div>
     </div>
@@ -1043,6 +1040,7 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
 function MoversList({
   title,
   subtitle,
+
   tone,
   items,
 }: {

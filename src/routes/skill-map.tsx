@@ -601,11 +601,32 @@ function MilestoneDetail({
   const [score, setScore] = useState<0 | 0.5 | 1 | null>(milestone.score);
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [showLinker, setShowLinker] = useState(false);
-  const [linkedPrograms, setLinkedPrograms] = useState<string[]>(milestone.linkedProgramIds);
+  const [links, setLinks] = useState<ProgramLink[]>(milestone.links);
+  const [linker, setLinker] = useState<
+    | null
+    | { scope: "milestone" } 
+    | { scope: "target"; targetCode: string }
+  >(null);
   const fill = levelFillClass(levelIdx);
 
-  const mastered = milestone.subTargets.filter((t) => t.mastered).length;
+  // Build combined timeline (most recent first)
+  const timeline = useMemo<HistoryEvent[]>(() => {
+    return [...milestone.history].sort((a, b) => (a.date < b.date ? 1 : -1));
+  }, [milestone.history]);
+
+  const milestoneLinks = links.filter((l) => l.scope === "milestone");
+  const targetLinksByCode = useMemo(() => {
+    const map = new Map<string, ProgramLink[]>();
+    links.filter((l) => l.scope === "target").forEach((l) => {
+      const code = l.targetCode!;
+      if (!map.has(code)) map.set(code, []);
+      map.get(code)!.push(l);
+    });
+    return map;
+  }, [links]);
+
+  const removeLink = (id: string) =>
+    setLinks((prev) => prev.filter((l) => l.id !== id));
 
   return (
     <div className="flex h-full flex-col">
@@ -629,35 +650,25 @@ function MilestoneDetail({
       </SheetHeader>
 
       <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
-        <TabsList className="mx-6 mt-4 grid grid-cols-4">
+        <TabsList className="mx-6 mt-4 grid grid-cols-2">
           <TabsTrigger value="score">
             <Sparkles className="mr-1.5 size-3.5" />
-            Score
+            Score & history
           </TabsTrigger>
-          <TabsTrigger value="sub">
+          <TabsTrigger value="targets">
             <TargetIcon className="mr-1.5 size-3.5" />
-            Sub-targets
-            <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-              {milestone.subTargets.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="programs">
-            <Link2 className="mr-1.5 size-3.5" />
-            Programs
-            {linkedPrograms.length > 0 && (
+            Targets & programs
+            {(milestone.subTargets.length > 0 || links.length > 0) && (
               <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-                {linkedPrograms.length}
+                {milestone.subTargets.length}
+                {links.length > 0 && <span className="ml-0.5 opacity-70">· {links.length}🔗</span>}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="history">
-            <Clock className="mr-1.5 size-3.5" />
-            History
-          </TabsTrigger>
         </TabsList>
 
-        {/* SCORE — paper VB-MAPP 0 / 0.5 / 1 */}
-        <TabsContent value="score" className="flex-1 px-6 py-5">
+        {/* SCORE + HISTORY */}
+        <TabsContent value="score" className="flex-1 space-y-6 px-6 py-5">
           <div className="space-y-4">
             <div>
               <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -677,212 +688,359 @@ function MilestoneDetail({
                   <span>1 — Mastered</span>
                 </ScoreButton>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                <strong>0.5 (emerging)</strong> is your highest-value target — skill is present but
-                inconsistent.
-              </p>
             </div>
 
-            <div>
-              <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Date
+            <div className="grid grid-cols-[180px_1fr] gap-3">
+              <div>
+                <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Date
+                </div>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-9"
+                />
               </div>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="h-9 w-[180px]"
-              />
-            </div>
-
-            <div>
-              <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <StickyNote className="size-3" />
-                Clinical notes
+              <div>
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <StickyNote className="size-3" />
+                  Clinical notes
+                </div>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="What did you observe? Prompt level, stimuli, settings…"
+                  rows={2}
+                  className="resize-none"
+                />
               </div>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="What did you observe? Prompt level, stimuli, settings, distractors…"
-                rows={3}
-                className="resize-none"
-              />
             </div>
 
             <Button className="w-full" disabled={score === milestone.score}>
               Save score
             </Button>
           </div>
-        </TabsContent>
 
-        {/* SUB-TARGETS */}
-        <TabsContent value="sub" className="flex-1 px-6 py-5">
-          <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {mastered}/{milestone.subTargets.length} sub-targets mastered
-            </span>
-            <span>From the Targets supplement</span>
-          </div>
-          <div className="space-y-1.5">
-            {milestone.subTargets.map((t) => (
-              <div
-                key={t.code}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border px-3 py-2.5",
-                  t.mastered ? "border-border bg-card" : "border-dashed border-border bg-background/40",
-                )}
-              >
-                <span
-                  className={cn(
-                    "grid size-4 shrink-0 place-items-center rounded-sm border-2",
-                    t.mastered ? cn(fill.border, fill.solid) : "border-border",
-                  )}
-                >
-                  {t.mastered && <Check className="size-2.5 text-white" />}
-                </span>
-                <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
-                  {t.code}
-                </span>
-                <span className="min-w-0 flex-1 text-xs text-foreground">{t.text}</span>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* PROGRAMS */}
-        <TabsContent value="programs" className="flex-1 px-6 py-5">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-display text-sm font-semibold">Linked work programs</h4>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Programs feeding trial data into this milestone.
+          {/* HISTORY — assessments + program links interleaved */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <Clock className="size-3" />
+              History
+            </div>
+            {timeline.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground">No events yet</p>
+                <p className="text-xs text-muted-foreground/80">
+                  Scoring and program-link changes will appear here.
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant={showLinker ? "secondary" : "default"}
-                onClick={() => setShowLinker((v) => !v)}
-              >
+            ) : (
+              <ol className="relative space-y-2.5 border-l border-border pl-5">
+                {timeline.map((h, i) => (
+                  <HistoryRow key={i} h={h} />
+                ))}
+              </ol>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* TARGETS + PROGRAMS combined */}
+        <TabsContent value="targets" className="flex-1 space-y-5 px-6 py-5">
+          {/* Milestone-level programs */}
+          <section className="rounded-xl border border-border bg-card p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <h4 className="font-display text-sm font-semibold">Programs for whole milestone</h4>
+                <p className="text-[11px] text-muted-foreground">
+                  When the program is reached, it closes this milestone.
+                </p>
+              </div>
+              <Button size="sm" onClick={() => setLinker({ scope: "milestone" })}>
                 <Plus className="mr-1 size-3.5" />
-                Link program
+                Link
               </Button>
             </div>
-
-            {linkedPrograms.length === 0 && !showLinker && (
-              <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-8 text-center">
-                <Link2 className="mx-auto size-6 text-muted-foreground/60" />
-                <p className="mt-2 text-sm text-muted-foreground">No programs linked yet.</p>
-                <p className="text-xs text-muted-foreground/80">
-                  Link a program so trial data updates this milestone automatically.
-                </p>
+            {milestoneLinks.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-border bg-background/40 px-3 py-3 text-center text-xs text-muted-foreground">
+                No program linked to the whole milestone.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {milestoneLinks.map((l) => (
+                  <LinkRow key={l.id} link={l} onRemove={() => removeLink(l.id)} />
+                ))}
               </div>
             )}
+          </section>
 
-            <div className="space-y-1.5">
-              {linkedPrograms.map((pid) => {
-                const p = PROGRAMS.find((x) => x.id === pid);
-                if (!p) return null;
+          {/* Targets */}
+          <section>
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-bold uppercase tracking-wider text-muted-foreground">
+                Targets ({milestone.subTargets.length})
+              </span>
+              <span className="text-muted-foreground">From the Targets supplement</span>
+            </div>
+            <div className="space-y-2">
+              {milestone.subTargets.map((t) => {
+                const tLinks = targetLinksByCode.get(t.code) ?? [];
                 return (
                   <div
-                    key={pid}
-                    className="flex items-center justify-between rounded-lg border border-border bg-card px-3 py-2.5"
+                    key={t.code}
+                    className={cn(
+                      "rounded-lg border px-3 py-2.5",
+                      t.mastered ? "border-border bg-card" : "border-dashed border-border bg-background/40",
+                    )}
                   >
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-foreground">{p.name}</div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {p.area} · counts in progress
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "grid size-4 shrink-0 place-items-center rounded-sm border-2",
+                          t.mastered ? cn(fill.border, fill.solid) : "border-border",
+                        )}
+                      >
+                        {t.mastered && <Check className="size-2.5 text-white" />}
+                      </span>
+                      <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
+                        {t.code}
+                      </span>
+                      <span className="min-w-0 flex-1 text-xs text-foreground">{t.text}</span>
+                      <button
+                        onClick={() => setLinker({ scope: "target", targetCode: t.code })}
+                        className={cn(
+                          "shrink-0 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-semibold transition",
+                          tLinks.length > 0
+                            ? "border-primary/40 bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <Link2 className="size-3" />
+                        {tLinks.length > 0 ? `${tLinks.length} linked` : "Link"}
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setLinkedPrograms((prev) => prev.filter((x) => x !== pid))}
-                      className="text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      Unlink
-                    </button>
+                    {tLinks.length > 0 && (
+                      <div className="mt-2 space-y-1 pl-6">
+                        {tLinks.map((l) => (
+                          <LinkRow key={l.id} link={l} onRemove={() => removeLink(l.id)} compact />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+          </section>
 
-            {showLinker && (
-              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
-                  Link a work program
-                </div>
-                <div className="space-y-2">
-                  <Select>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="Choose program…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROGRAMS.filter((p) => !linkedPrograms.includes(p.id)).map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({p.area})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select defaultValue="in-progress">
-                    <SelectTrigger className="h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="in-progress">Counts toward emerging (0.5)</SelectItem>
-                      <SelectItem value="mastered">Requires mastered to award 1</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button size="sm" variant="ghost" onClick={() => setShowLinker(false)}>
-                      Cancel
-                    </Button>
-                    <Button size="sm">Save link</Button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* HISTORY */}
-        <TabsContent value="history" className="flex-1 px-6 py-5">
-          {milestone.history.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-surface/50 px-4 py-10 text-center">
-              <Clock className="mx-auto size-6 text-muted-foreground/60" />
-              <p className="mt-2 text-sm text-muted-foreground">No scoring events yet</p>
-              <p className="text-xs text-muted-foreground/80">
-                Reassessments will appear here so you can see score changes over time.
-              </p>
-            </div>
-          ) : (
-            <ol className="relative space-y-3 border-l border-border pl-5">
-              {milestone.history.map((h, i) => (
-                <li key={i} className="relative">
-                  <span
-                    className={cn(
-                      "absolute -left-[26px] top-1 grid size-4 place-items-center rounded-full ring-4 ring-card",
-                      h.score === 1 ? "bg-emerald-500" : h.score === 0.5 ? "bg-amber-500" : "bg-muted-foreground",
-                    )}
-                  >
-                    {h.score === 1 && <Check className="size-2.5 text-white" />}
-                    {h.score === 0.5 && <Sparkles className="size-2.5 text-white" />}
-                    {h.score === 0 && <X className="size-2.5 text-white" />}
-                  </span>
-                  <div className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold tabular-nums text-foreground">
-                        Scored {scoreLabel(h.score)}
-                      </span>
-                      <span className="tabular-nums text-muted-foreground">{h.date}</span>
-                    </div>
-                    {h.notes && <p className="mt-1.5 text-xs text-foreground/80">{h.notes}</p>}
-                  </div>
-                </li>
-              ))}
-            </ol>
+          {linker && (
+            <LinkerCard
+              scope={linker.scope}
+              targetCode={linker.scope === "target" ? linker.targetCode : undefined}
+              existingIds={links.map((l) => l.programId)}
+              onCancel={() => setLinker(null)}
+              onSave={(programId, trigger, closes) => {
+                setLinks((prev) => [
+                  ...prev,
+                  {
+                    id: `lnk-${Date.now()}`,
+                    programId,
+                    scope: linker.scope,
+                    targetCode: linker.scope === "target" ? linker.targetCode : undefined,
+                    trigger,
+                    closes,
+                  },
+                ]);
+                setLinker(null);
+              }}
+            />
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* ---------- History row ---------- */
+function HistoryRow({ h }: { h: HistoryEvent }) {
+  if (h.kind === "score") {
+    return (
+      <li className="relative">
+        <span
+          className={cn(
+            "absolute -left-[26px] top-1 grid size-4 place-items-center rounded-full ring-4 ring-card",
+            h.score === 1 ? "bg-emerald-500" : h.score === 0.5 ? "bg-amber-500" : "bg-muted-foreground",
+          )}
+        >
+          {h.score === 1 && <Check className="size-2.5 text-white" />}
+          {h.score === 0.5 && <Sparkles className="size-2.5 text-white" />}
+          {h.score === 0 && <X className="size-2.5 text-white" />}
+        </span>
+        <div className="rounded-lg border border-border bg-card p-2.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold tabular-nums text-foreground">
+              Scored {scoreLabel(h.score)}
+            </span>
+            <span className="tabular-nums text-muted-foreground">{h.date}</span>
+          </div>
+          {h.notes && <p className="mt-1 text-xs text-foreground/80">{h.notes}</p>}
+        </div>
+      </li>
+    );
+  }
+  const isLink = h.kind === "link";
+  return (
+    <li className="relative">
+      <span
+        className={cn(
+          "absolute -left-[26px] top-1 grid size-4 place-items-center rounded-full ring-4 ring-card",
+          isLink ? "bg-primary" : "bg-muted-foreground",
+        )}
+      >
+        <Link2 className="size-2.5 text-white" />
+      </span>
+      <div className="rounded-lg border border-border bg-card p-2.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-foreground">
+            {isLink ? "Linked" : "Unlinked"} <span className="font-normal">{h.programName}</span>
+          </span>
+          <span className="tabular-nums text-muted-foreground">{h.date}</span>
+        </div>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {h.scope === "milestone" ? "Whole milestone" : `Target ${h.targetCode}`}
+          {isLink && ` · closes ${h.closes} when ${h.trigger}`}
+        </p>
+      </div>
+    </li>
+  );
+}
+
+/* ---------- Linked program row ---------- */
+function LinkRow({
+  link,
+  onRemove,
+  compact,
+}: {
+  link: ProgramLink;
+  onRemove: () => void;
+  compact?: boolean;
+}) {
+  const p = PROGRAMS.find((x) => x.id === link.programId);
+  if (!p) return null;
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-2 rounded-lg border border-border bg-background",
+        compact ? "px-2.5 py-1.5" : "px-3 py-2.5",
+      )}
+    >
+      <div className="min-w-0">
+        <div className={cn("truncate font-medium text-foreground", compact ? "text-xs" : "text-sm")}>
+          {p.name}
+        </div>
+        <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Closes {link.closes} when {link.trigger}
+        </div>
+      </div>
+      <button
+        onClick={onRemove}
+        className="shrink-0 text-[11px] text-muted-foreground hover:text-destructive"
+      >
+        Unlink
+      </button>
+    </div>
+  );
+}
+
+/* ---------- Linker card (chooses program + trigger + what it closes) ---------- */
+function LinkerCard({
+  scope,
+  targetCode,
+  existingIds,
+  onCancel,
+  onSave,
+}: {
+  scope: "milestone" | "target";
+  targetCode?: string;
+  existingIds: string[];
+  onCancel: () => void;
+  onSave: (programId: string, trigger: "mastered" | "generalized", closes: "target" | "milestone") => void;
+}) {
+  const [programId, setProgramId] = useState<string>("");
+  const [trigger, setTrigger] = useState<"mastered" | "generalized">("mastered");
+  const [closes, setCloses] = useState<"target" | "milestone">(scope === "target" ? "target" : "milestone");
+  const available = PROGRAMS.filter((p) => !existingIds.includes(p.id));
+
+  return (
+    <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3">
+      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+        Link a program · {scope === "milestone" ? "whole milestone" : `target ${targetCode}`}
+      </div>
+      <div className="space-y-2">
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Program
+          </label>
+          <Select value={programId} onValueChange={setProgramId}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Choose program…" />
+            </SelectTrigger>
+            <SelectContent>
+              {available.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name} ({p.area})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              When the program is…
+            </label>
+            <Select value={trigger} onValueChange={(v) => setTrigger(v as "mastered" | "generalized")}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mastered">Mastered (instructional setting)</SelectItem>
+                <SelectItem value="generalized">Generalized (across settings)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              …it closes
+            </label>
+            <Select value={closes} onValueChange={(v) => setCloses(v as "target" | "milestone")}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {scope === "target" && <SelectItem value="target">Just this target</SelectItem>}
+                <SelectItem value="milestone">The whole milestone</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="rounded-md bg-background px-2.5 py-2 text-[11px] text-foreground/80">
+          <strong>Rule:</strong> when{" "}
+          <span className="font-semibold">{PROGRAMS.find((p) => p.id === programId)?.name ?? "the program"}</span>{" "}
+          is <span className="font-semibold">{trigger}</span>, it closes{" "}
+          <span className="font-semibold">{closes === "milestone" ? "the whole milestone" : `target ${targetCode}`}</span>.
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button size="sm" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button size="sm" disabled={!programId} onClick={() => onSave(programId, trigger, closes)}>
+            Save link
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

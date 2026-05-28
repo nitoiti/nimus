@@ -305,6 +305,10 @@ function Analytics() {
         <MasteryTrajectoryCard />
       </div>
 
+      <div className="mb-6">
+        <SkillMapCard />
+      </div>
+
       <div className="mb-6 grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           <IndependenceTrendCard />
@@ -313,6 +317,7 @@ function Analytics() {
           <VbMappCard />
         </div>
       </div>
+
 
       <PromptByAreaCard />
       <ActiveTargetsCard />

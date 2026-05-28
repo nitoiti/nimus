@@ -1006,13 +1006,6 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           {isComplete ? "Status" : "Projected to complete"}
         </div>
-        <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
-        {f.etaDate && (
-          <div className="mt-0.5 text-[11px] text-muted-foreground">
-      <div className="mt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {isComplete ? "Status" : "Projected to complete"}
-        </div>
         {isComplete ? (
           <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
         ) : isStalled ? (
@@ -1045,6 +1038,13 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
           <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function MoversList({
+  title,
+  subtitle,
 
   tone,
   items,

@@ -189,19 +189,20 @@ const skillTotals = (() => {
   return { mastered, emerging, failed, unassessed, available };
 })();
 
-      <div className="mb-6">
-        <SkillMapCard />
-      </div>
-
-      <div className="mb-6">
-        <IndependenceTrendCard />
-      </div>
-
-      <PromptByAreaCard />
-
+const skillLevelTotals = SKILL_LEVELS.map((_, lvl) => {
+  let mastered = 0,
+    emerging = 0,
+    available = 0;
+  skillGrid.forEach((row) => {
+    const c = row[lvl];
+    if (!c.available) return;
+    available += c.total;
+    mastered += c.mastered;
+    emerging += c.emerging;
   });
   return { mastered, emerging, available };
 });
+
 
 // Top areas to attack — most emerging milestones across all levels.
 const emergingQueue = SKILL_AREAS.map((a, ai) => {

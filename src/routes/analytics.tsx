@@ -958,14 +958,6 @@ function SkillMapCard() {
         />
       </div>
 
-      <div className="mt-4 flex items-center justify-end text-xs">
-        <a
-          href="/skill-map"
-          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-        >
-          Open skill map <ChevronRight className="size-3" />
-        </a>
-      </div>
     </Card>
   );
 }

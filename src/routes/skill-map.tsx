@@ -67,8 +67,8 @@ type Milestone = {
   criteria: string;
   score: Score;
   subTargets: SubTarget[]; // Targets-supplement breakdown
-  linkedProgramIds: string[];
-  history: ScoreEvent[];
+  links: ProgramLink[]; // links can attach to whole milestone or a specific target
+  history: HistoryEvent[];
 };
 
 type SubTarget = {
@@ -77,11 +77,19 @@ type SubTarget = {
   mastered: boolean;
 };
 
-type ScoreEvent = {
-  date: string;
-  score: 0 | 0.5 | 1;
-  notes?: string;
+type ProgramLink = {
+  id: string;
+  programId: string;
+  scope: "milestone" | "target";
+  targetCode?: string; // when scope === "target"
+  trigger: "mastered" | "generalized";
+  closes: "target" | "milestone";
 };
+
+type HistoryEvent =
+  | { kind: "score"; date: string; score: 0 | 0.5 | 1; notes?: string }
+  | { kind: "link"; date: string; programName: string; scope: "milestone" | "target"; targetCode?: string; trigger: "mastered" | "generalized"; closes: "target" | "milestone" }
+  | { kind: "unlink"; date: string; programName: string; scope: "milestone" | "target"; targetCode?: string };
 
 type AreaDef = {
   code: string;

@@ -25,6 +25,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ChevronRight,
+  HelpCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/analytics")({

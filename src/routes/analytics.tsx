@@ -25,6 +25,8 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  ChevronRight,
+  HelpCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/analytics")({
@@ -98,38 +100,48 @@ const vbMappLevels = [
   { level: 3, range: "30–48m", mastered: 2, total: 2, status: "complete" as const },
 ];
 
-const activeTargets = [
+const activePrograms = [
   {
+    id: "p-self-help-brush",
     area: "Self-Help / DLS",
-    target: "Brushes teeth with model",
+    program: "Brushes teeth with model",
+    targets: 3,
     status: "stalled",
     detail: "17 days idle · 6 trials · 18% indep",
     action: "Re-introduce or pause",
   },
   {
+    id: "p-listener-2step",
     area: "Listener Behavior",
-    target: "Touch 2-step direction (kitchen)",
+    program: "Touch 2-step direction (kitchen)",
+    targets: 2,
     status: "stalled",
     detail: "12 days idle · 38% indep · plateau 4w",
     action: "Review prompt strategy",
   },
   {
+    id: "p-tact-person-action",
     area: "Tact / Naming",
-    target: "Tact person + action",
+    program: "Tact person + action",
+    targets: 4,
     status: "ready",
     detail: "92% indep · 28 trials · 5 sessions",
     action: "Move to generalization",
   },
   {
+    id: "p-mand-open",
     area: "Mand / Requests",
-    target: "Mands 'open' across 3 contexts",
+    program: "Mands 'open' across 3 contexts",
+    targets: 3,
     status: "on-track",
     detail: "74% indep · improving 2w",
     action: "Continue current plan",
   },
   {
+    id: "p-echoic-syllable",
     area: "Echoic / Verbal Behavior",
-    target: "Echoic 2–3 syllable",
+    program: "Echoic 2–3 syllable",
+    targets: 1,
     status: "no-data",
     detail: "Opened 10 days ago · 0 sessions",
     action: "Schedule first probe",
@@ -173,7 +185,9 @@ function Analytics() {
       <HeroInsight />
       <KpiStrip />
       <DataEraBanner />
-      <MasteryTrajectoryCard />
+      <div className="mb-6">
+        <MasteryTrajectoryCard />
+      </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
@@ -206,8 +220,8 @@ function HeroInsight() {
           </p>
           <h2 className="mt-1 font-display text-xl font-semibold leading-snug sm:text-2xl">
             Independence trending up <span className="text-success">+8%</span> over 4 weeks ·{" "}
-            <span className="text-warning-foreground/90">2 targets stalled</span> in Self-Help and
-            Listener Behavior.
+            <span style={{ color: "oklch(0.85 0.16 75)" }}>2 programs stalled</span> in Self-Help
+            and Listener Behavior.
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/75">
             Live tracking is 14 weeks in. Trial volume is steady (~22/day) and prompt dependency in
@@ -222,10 +236,31 @@ function HeroInsight() {
 function KpiStrip() {
   return (
     <section className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
-      <Kpi label="Active targets" value="12" trend={null} />
-      <Kpi label="Mastered (90d, live)" value="9" trend="up" trendValue="+3 vs prev" tone="success" />
-      <Kpi label="Independence" value="68%" trend="up" trendValue="+8% / 4w" tone="success" />
-      <Kpi label="Prompt dependency" value="27%" trend="down" trendValue="−5% / 4w" tone="info" />
+      <Kpi label="Active programs" value="12" trend={null} />
+      <Kpi
+        label="Mastered (90d)"
+        value="9"
+        trend="up"
+        trendValue="+3 vs prev"
+        tone="success"
+        hint="Targets closed as mastered in the last 90 days. Includes both live and retrospective programs."
+      />
+      <Kpi
+        label="Independence"
+        value="68%"
+        trend="up"
+        trendValue="+8% / 4w"
+        tone="success"
+        hint="Share of independent (+) responses across live trials. Shows '—' when this child has no +/P trial data."
+      />
+      <Kpi
+        label="Prompt dependency"
+        value="27%"
+        trend="down"
+        trendValue="−5% / 4w"
+        tone="info"
+        hint="Share of prompted (P) responses across live trials. Lower is better. Hidden when no trial data exists."
+      />
       <Kpi label="Avg days to mastery" value="21" trend="flat" trendValue="live era" />
     </section>
   );
@@ -237,17 +272,26 @@ function Kpi({
   trend,
   trendValue,
   tone,
+  hint,
+  empty,
 }: {
   label: string;
   value: string;
   trend: "up" | "down" | "flat" | null;
   trendValue?: string;
   tone?: "success" | "info";
+  hint?: string;
+  empty?: boolean;
 }) {
   const valueClass =
-    tone === "success" ? "text-success" : tone === "info" ? "text-info" : "text-foreground";
+    empty
+      ? "text-muted-foreground"
+      : tone === "success"
+      ? "text-success"
+      : tone === "info"
+      ? "text-info"
+      : "text-foreground";
   const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
-  // For prompt dependency, "down" is good → tint success
   const trendTone =
     label.toLowerCase().includes("prompt") && trend === "down"
       ? "text-success"
@@ -258,31 +302,51 @@ function Kpi({
       : "text-muted-foreground";
   return (
     <div className="rounded-2xl border border-border bg-card px-4 py-3.5 shadow-soft">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="truncate">{label}</span>
+        {hint && (
+          <span title={hint} className="cursor-help">
+            <HelpCircle className="size-3 text-muted-foreground/60" />
+          </span>
+        )}
       </div>
       <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${valueClass}`}>
-        {value}
+        {empty ? "—" : value}
       </div>
-      {trend && trendValue && (
-        <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
-          <TrendIcon className="size-3" /> {trendValue}
-        </div>
+      {empty ? (
+        <div className="mt-1 text-[11px] text-muted-foreground">No trial data yet</div>
+      ) : (
+        trend &&
+        trendValue && (
+          <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
+            <TrendIcon className="size-3" /> {trendValue}
+          </div>
+        )
       )}
     </div>
   );
 }
 
 function DataEraBanner() {
+  // Only render when this child actually has both retrospective (no-trial) and
+  // live (+/P) programs. Hide entirely otherwise so it doesn't read as a
+  // platform-wide rule.
+  const hasRetro = true;
+  const hasLive = true;
+  if (!(hasRetro && hasLive)) return null;
+  const liveStart = new Date(ERA_SPLIT).toLocaleDateString("en", {
+    month: "short",
+    year: "numeric",
+  });
   return (
     <section className="mb-5 flex items-start gap-3 rounded-xl border border-border bg-surface/60 px-4 py-3 text-sm">
       <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="leading-relaxed text-muted-foreground">
-        <span className="font-semibold text-foreground">Two data eras.</span> Programs closed before{" "}
-        <span className="font-medium text-foreground">Aug 2025</span> were back-filled with
-        start/end dates only — no trial-level data. They appear in mastery counts but are{" "}
-        <span className="font-medium text-foreground">excluded from independence, prompt and trial-mix charts</span>{" "}
-        to avoid misleading clinical signal. Retrospective ranges are shaded with diagonal hatching.
+        <span className="font-semibold text-foreground">Mixed data for this child.</span> Some
+        programs were closed without trial-level records and only have start/end dates — those count
+        toward mastery but can't contribute to independence or prompt charts. Trial-based tracking
+        started <span className="font-medium text-foreground">{liveStart}</span>; ranges without
+        trial data are shown with diagonal hatching, and weeks with no sessions render as gaps.
       </div>
     </section>
   );
@@ -375,7 +439,7 @@ function IndependenceTrendCard() {
   return (
     <Card
       title="Independence trend"
-      subtitle="Weekly % of independent (+) responses across all live trials."
+      subtitle="Weekly % of independent (+) and prompted (P) responses. Weeks without trial data render as gaps — the chart never extrapolates across silence."
     >
       <div className="h-64 w-full">
         <ResponsiveContainer>
@@ -487,7 +551,7 @@ function PromptByAreaCard() {
     <div className="mb-6">
       <Card
         title="Prompt dependency by VB-MAPP area"
-        subtitle="Live trials only. High prompt % flags where fading plans need attention."
+        subtitle="Based on trial-level data only. Areas with no live trials in this range are hidden — they don't appear as empty bars."
       >
         <div className="h-72 w-full">
           <ResponsiveContainer>
@@ -547,34 +611,44 @@ function PromptByAreaCard() {
 
 function ActiveTargetsCard() {
   const order = { stalled: 0, "no-data": 1, ready: 2, "on-track": 3 } as const;
-  const sorted = [...activeTargets].sort(
+  const sorted = [...activePrograms].sort(
     (a, b) => order[a.status as keyof typeof order] - order[b.status as keyof typeof order],
   );
   return (
     <section className="mb-6 rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h3 className="font-display text-base font-semibold">Active targets — needs review</h3>
+          <h3 className="font-display text-base font-semibold">Programs — needs review</h3>
           <p className="text-xs text-muted-foreground">
-            Sorted by clinical priority. Stalled and no-data targets at the top.
+            Sorted by clinical priority. Click a program to open it in the skill map.
           </p>
         </div>
       </div>
       <div className="divide-y divide-border">
-        {sorted.map((t) => (
-          <div key={t.target} className="grid grid-cols-12 items-center gap-3 px-5 py-4">
+        {sorted.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => {
+              // demo prototype — would navigate to /skill-map?program={p.id}
+              console.info("open program", p.id);
+            }}
+            className="grid w-full grid-cols-12 items-center gap-3 px-5 py-4 text-left transition hover:bg-surface/60 focus:bg-surface/60 focus:outline-none"
+          >
             <div className="col-span-12 sm:col-span-5">
-              <p className="font-medium text-foreground">{t.target}</p>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{t.area}</p>
+              <p className="font-medium text-foreground">{p.program}</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {p.area} · {p.targets} target{p.targets === 1 ? "" : "s"}
+              </p>
             </div>
-            <div className="col-span-7 text-sm text-muted-foreground sm:col-span-4">{t.detail}</div>
+            <div className="col-span-7 text-sm text-muted-foreground sm:col-span-4">{p.detail}</div>
             <div className="col-span-5 sm:col-span-2">
-              <StatusChip kind={t.status as StatusKind} />
+              <StatusChip kind={p.status as StatusKind} />
             </div>
-            <div className="col-span-12 text-xs font-medium text-primary sm:col-span-1 sm:text-right">
-              {t.action}
+            <div className="col-span-12 inline-flex items-center justify-end gap-1 text-xs font-medium text-primary sm:col-span-1">
+              {p.action} <ChevronRight className="size-3" />
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>

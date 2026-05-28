@@ -569,7 +569,7 @@ function LevelSummary({
         {stats.emerging > 0 && (
           <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
             <Sparkles className="size-3" />
-            {stats.emerging} emerging — prime targets
+            {stats.emerging} emerging
           </span>
         )}
         {stats.unassessed > 0 && (

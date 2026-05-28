@@ -328,15 +328,25 @@ function Kpi({
 }
 
 function DataEraBanner() {
+  // Only render when this child actually has both retrospective (no-trial) and
+  // live (+/P) programs. Hide entirely otherwise so it doesn't read as a
+  // platform-wide rule.
+  const hasRetro = true;
+  const hasLive = true;
+  if (!(hasRetro && hasLive)) return null;
+  const liveStart = new Date(ERA_SPLIT).toLocaleDateString("en", {
+    month: "short",
+    year: "numeric",
+  });
   return (
     <section className="mb-5 flex items-start gap-3 rounded-xl border border-border bg-surface/60 px-4 py-3 text-sm">
       <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="leading-relaxed text-muted-foreground">
-        <span className="font-semibold text-foreground">Two data eras.</span> Programs closed before{" "}
-        <span className="font-medium text-foreground">Aug 2025</span> were back-filled with
-        start/end dates only — no trial-level data. They appear in mastery counts but are{" "}
-        <span className="font-medium text-foreground">excluded from independence, prompt and trial-mix charts</span>{" "}
-        to avoid misleading clinical signal. Retrospective ranges are shaded with diagonal hatching.
+        <span className="font-semibold text-foreground">Mixed data for this child.</span> Some
+        programs were closed without trial-level records and only have start/end dates — those count
+        toward mastery but can't contribute to independence or prompt charts. Trial-based tracking
+        started <span className="font-medium text-foreground">{liveStart}</span>; ranges without
+        trial data are shown with diagonal hatching, and weeks with no sessions render as gaps.
       </div>
     </section>
   );

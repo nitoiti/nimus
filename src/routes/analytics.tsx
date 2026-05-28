@@ -189,16 +189,16 @@ const skillTotals = (() => {
   return { mastered, emerging, failed, unassessed, available };
 })();
 
-const skillLevelTotals = SKILL_LEVELS.map((_, lvl) => {
-  let mastered = 0,
-    emerging = 0,
-    available = 0;
-  skillGrid.forEach((row) => {
-    const c = row[lvl];
-    if (!c.available) return;
-    available += c.total;
-    mastered += c.mastered;
-    emerging += c.emerging;
+      <div className="mb-6">
+        <SkillMapCard />
+      </div>
+
+      <div className="mb-6">
+        <IndependenceTrendCard />
+      </div>
+
+      <PromptByAreaCard />
+
   });
   return { mastered, emerging, available };
 });

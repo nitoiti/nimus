@@ -100,6 +100,121 @@ const vbMappLevels = [
   { level: 3, range: "30–48m", mastered: 2, total: 2, status: "complete" as const },
 ];
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Skill map (VB-MAPP grid) — mirrors /skill-map.
+   16 areas × 3 developmental levels × 5 milestones per cell.
+   Same seeded distribution as skill-map.tsx so numbers stay in sync.
+   ────────────────────────────────────────────────────────────────────────── */
+
+type SkillScore = 0 | 0.5 | 1 | null;
+
+const SKILL_AREAS: { code: string; name: string; levels: [boolean, boolean, boolean] }[] = [
+  { code: "MND", name: "Mand", levels: [true, true, true] },
+  { code: "TCT", name: "Tact", levels: [true, true, true] },
+  { code: "LSN", name: "Listener", levels: [true, true, true] },
+  { code: "VPM", name: "VP-MTS", levels: [true, true, true] },
+  { code: "PLY", name: "Play", levels: [true, true, true] },
+  { code: "SOC", name: "Social", levels: [true, true, true] },
+  { code: "IMI", name: "Imitation", levels: [true, true, false] },
+  { code: "ECH", name: "Echoic", levels: [true, true, false] },
+  { code: "SVB", name: "Spont. vocal", levels: [true, false, false] },
+  { code: "LRF", name: "LRFFC", levels: [false, true, true] },
+  { code: "INT", name: "Intraverbal", levels: [false, true, true] },
+  { code: "GRP", name: "Classroom", levels: [false, true, true] },
+  { code: "LIN", name: "Linguistics", levels: [false, true, true] },
+  { code: "RED", name: "Reading", levels: [false, false, true] },
+  { code: "WRT", name: "Writing", levels: [false, false, true] },
+  { code: "MTH", name: "Math", levels: [false, false, true] },
+];
+
+const SKILL_LEVELS = [
+  { n: 1, label: "L1", age: "0–18m" },
+  { n: 2, label: "L2", age: "18–30m" },
+  { n: 3, label: "L3", age: "30–48m" },
+];
+
+function seeded(n: number) {
+  return Math.abs((Math.sin(n * 9301 + 49297) * 233280) % 1);
+}
+
+type CellStats = {
+  available: boolean;
+  mastered: number;
+  emerging: number;
+  failed: number;
+  unassessed: number;
+  total: number; // mastered + emerging counts toward "scored" denominator
+};
+
+const skillGrid: CellStats[][] = SKILL_AREAS.map((a, ai) =>
+  a.levels.map((available, lvl): CellStats => {
+    if (!available)
+      return { available: false, mastered: 0, emerging: 0, failed: 0, unassessed: 0, total: 0 };
+    let mastered = 0,
+      emerging = 0,
+      failed = 0,
+      unassessed = 0;
+    for (let i = 0; i < 5; i++) {
+      const milestoneN = lvl * 5 + i + 1;
+      const r = seeded(ai * 31 + milestoneN);
+      let s: SkillScore;
+      if (lvl === 0) s = r > 0.2 ? 1 : r > 0.08 ? 0.5 : r > 0.02 ? 0 : null;
+      else if (lvl === 1) s = r > 0.75 ? 1 : r > 0.45 ? 0.5 : r > 0.2 ? 0 : null;
+      else s = r > 0.9 ? 0.5 : r > 0.7 ? 0 : null;
+      if (s === 1) mastered++;
+      else if (s === 0.5) emerging++;
+      else if (s === 0) failed++;
+      else unassessed++;
+    }
+    return { available: true, mastered, emerging, failed, unassessed, total: 5 };
+  }),
+);
+
+const skillTotals = (() => {
+  let mastered = 0,
+    emerging = 0,
+    failed = 0,
+    unassessed = 0,
+    available = 0;
+  skillGrid.forEach((row) =>
+    row.forEach((c) => {
+      if (!c.available) return;
+      available += c.total;
+      mastered += c.mastered;
+      emerging += c.emerging;
+      failed += c.failed;
+      unassessed += c.unassessed;
+    }),
+  );
+  return { mastered, emerging, failed, unassessed, available };
+})();
+
+const skillLevelTotals = SKILL_LEVELS.map((_, lvl) => {
+  let mastered = 0,
+    emerging = 0,
+    available = 0;
+  skillGrid.forEach((row) => {
+    const c = row[lvl];
+    if (!c.available) return;
+    available += c.total;
+    mastered += c.mastered;
+    emerging += c.emerging;
+  });
+  return { mastered, emerging, available };
+});
+
+// Top areas to attack — most emerging milestones across all levels.
+const emergingQueue = SKILL_AREAS.map((a, ai) => {
+  const emerging = skillGrid[ai].reduce((sum, c) => sum + c.emerging, 0);
+  const mastered = skillGrid[ai].reduce((sum, c) => sum + c.mastered, 0);
+  const available = skillGrid[ai].reduce((sum, c) => sum + (c.available ? c.total : 0), 0);
+  return { code: a.code, name: a.name, emerging, mastered, available };
+})
+  .filter((a) => a.emerging > 0)
+  .sort((a, b) => b.emerging - a.emerging)
+  .slice(0, 6);
+
+
 const activePrograms = [
   {
     id: "p-self-help-brush",

@@ -559,34 +559,44 @@ function PromptByAreaCard() {
 
 function ActiveTargetsCard() {
   const order = { stalled: 0, "no-data": 1, ready: 2, "on-track": 3 } as const;
-  const sorted = [...activeTargets].sort(
+  const sorted = [...activePrograms].sort(
     (a, b) => order[a.status as keyof typeof order] - order[b.status as keyof typeof order],
   );
   return (
     <section className="mb-6 rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h3 className="font-display text-base font-semibold">Active targets — needs review</h3>
+          <h3 className="font-display text-base font-semibold">Programs — needs review</h3>
           <p className="text-xs text-muted-foreground">
-            Sorted by clinical priority. Stalled and no-data targets at the top.
+            Sorted by clinical priority. Click a program to open it in the skill map.
           </p>
         </div>
       </div>
       <div className="divide-y divide-border">
-        {sorted.map((t) => (
-          <div key={t.target} className="grid grid-cols-12 items-center gap-3 px-5 py-4">
+        {sorted.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => {
+              // demo prototype — would navigate to /skill-map?program={p.id}
+              console.info("open program", p.id);
+            }}
+            className="grid w-full grid-cols-12 items-center gap-3 px-5 py-4 text-left transition hover:bg-surface/60 focus:bg-surface/60 focus:outline-none"
+          >
             <div className="col-span-12 sm:col-span-5">
-              <p className="font-medium text-foreground">{t.target}</p>
-              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{t.area}</p>
+              <p className="font-medium text-foreground">{p.program}</p>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                {p.area} · {p.targets} target{p.targets === 1 ? "" : "s"}
+              </p>
             </div>
-            <div className="col-span-7 text-sm text-muted-foreground sm:col-span-4">{t.detail}</div>
+            <div className="col-span-7 text-sm text-muted-foreground sm:col-span-4">{p.detail}</div>
             <div className="col-span-5 sm:col-span-2">
-              <StatusChip kind={t.status as StatusKind} />
+              <StatusChip kind={p.status as StatusKind} />
             </div>
-            <div className="col-span-12 text-xs font-medium text-primary sm:col-span-1 sm:text-right">
-              {t.action}
+            <div className="col-span-12 inline-flex items-center justify-end gap-1 text-xs font-medium text-primary sm:col-span-1">
+              {p.action} <ChevronRight className="size-3" />
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>

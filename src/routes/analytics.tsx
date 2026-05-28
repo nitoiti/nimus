@@ -185,7 +185,9 @@ function Analytics() {
       <HeroInsight />
       <KpiStrip />
       <DataEraBanner />
-      <MasteryTrajectoryCard />
+      <div className="mb-6">
+        <MasteryTrajectoryCard />
+      </div>
 
       <div className="mb-6 grid gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">

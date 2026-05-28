@@ -439,7 +439,7 @@ function IndependenceTrendCard() {
   return (
     <Card
       title="Independence trend"
-      subtitle="Weekly % of independent (+) responses across all live trials."
+      subtitle="Weekly % of independent (+) and prompted (P) responses. Weeks without trial data render as gaps — the chart never extrapolates across silence."
     >
       <div className="h-64 w-full">
         <ResponsiveContainer>

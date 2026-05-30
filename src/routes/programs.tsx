@@ -350,6 +350,7 @@ function ProgramsPage() {
                   key={area.code}
                   area={area}
                   onAddProgram={() => setNewProgramArea(area.code)}
+                  onUpdateProgram={(code, patch) => handleUpdateProgram(area.code, code, patch)}
                 />
               ))
             )}

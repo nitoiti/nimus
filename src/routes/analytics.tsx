@@ -50,7 +50,10 @@ const masteryTrajectory = (() => {
   const start = new Date("2024-02-01");
   const weeks: { date: string; mastered: number; era: "retro" | "live" }[] = [];
   let total = 0;
-  for (let i = 0; i < 70; i++) {
+  // Generate weeks from Feb 2024 up to (roughly) today so the live era has data.
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const count = Math.max(70, Math.ceil((Date.now() - start.getTime()) / WEEK_MS));
+  for (let i = 0; i < count; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i * 7);
     const iso = d.toISOString().slice(0, 10);

@@ -1370,7 +1370,7 @@ function ClosureTimelineCard({
   series: { date: string; value: number }[];
   closures: Closure[];
   groupByWeek?: boolean;
-  footer?: React.ReactNode;
+  footer?: ReactNode;
 }) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const startMs = series[0] ? new Date(series[0].date).getTime() : 0;

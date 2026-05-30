@@ -1349,62 +1349,109 @@ function SkillMapCard() {
   );
 }
 
-function TrajectoryMini({
-  label,
-  help,
-  dataKey,
+function ClosureTimelineCard({
+  title,
+  subtitle,
   color,
-  type,
+  closed,
   goal,
   goalLabel,
+  series,
+  closures,
+  groupByWeek = false,
+  footer,
 }: {
-  label: string;
-  help: string;
-  dataKey: "targets" | "milestones";
+  title: string;
+  subtitle: string;
   color: string;
-  type: "monotone" | "stepAfter";
-  goal: number;
-  goalLabel: string;
+  closed: number;
+  goal?: number | null;
+  goalLabel?: string;
+  series: { date: string; value: number }[];
+  closures: Closure[];
+  groupByWeek?: boolean;
+  footer?: React.ReactNode;
 }) {
-  const last = liveTrajectory[liveTrajectory.length - 1]?.[dataKey] ?? 0;
-  const pct = Math.min(100, Math.round((last / goal) * 100));
-  const remaining = Math.max(0, goal - last);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const startMs = series[0] ? new Date(series[0].date).getTime() : 0;
+  const endMs = series[series.length - 1]
+    ? new Date(series[series.length - 1].date).getTime()
+    : 1;
+  const span = Math.max(1, endMs - startMs);
+  const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+  const buckets = (() => {
+    const map = new Map<string, Closure[]>();
+    closures.forEach((c) => {
+      let key = c.date;
+      if (groupByWeek) {
+        const t = new Date(c.date).getTime();
+        key = String(Math.floor((t - startMs) / WEEK_MS));
+      }
+      const arr = map.get(key) ?? [];
+      arr.push(c);
+      map.set(key, arr);
+    });
+    return Array.from(map.entries()).map(([key, items]) => {
+      const dates = items.map((c) => new Date(c.date).getTime()).sort((a, b) => a - b);
+      const midMs = dates[Math.floor(dates.length / 2)] ?? startMs;
+      return { key, items, midMs, x: ((midMs - startMs) / span) * 100 };
+    });
+  })();
+
+  const selected = buckets.find((b) => b.key === selectedKey);
+  const yMax = goal
+    ? Math.ceil(goal * 1.05)
+    : Math.max(...series.map((s) => s.value), 1) * 1.1;
+  const pct = goal != null ? Math.min(100, Math.round((closed / goal) * 100)) : null;
+  const remaining = goal != null ? Math.max(0, goal - closed) : null;
+  const gradId = `clos-grad-${title.replace(/[^a-z0-9]/gi, "")}`;
+
   return (
-    <div className="rounded-xl border border-border bg-surface/40 p-3">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
+    <Card title={title} subtitle={subtitle}>
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
+          {closed}
+          {goal != null && (
+            <span className="text-sm font-normal text-muted-foreground"> / {goal}</span>
+          )}
         </p>
-        <p className="text-[10px] text-muted-foreground">{help}</p>
+        {pct != null && (
+          <p className="text-xs text-muted-foreground">
+            {pct}% there · {remaining} to go
+          </p>
+        )}
+        <p className="ml-auto text-[11px] text-muted-foreground">
+          {closures.length} closures tracked
+        </p>
       </div>
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <p className="font-display text-lg font-semibold tabular-nums text-foreground">
-          {last} <span className="text-xs font-normal text-muted-foreground">/ {goal}</span>
-        </p>
-        <p className="text-[10px] text-muted-foreground">
-          {pct}% there · {remaining} to go
-        </p>
-      </div>
-      <div className="h-36 w-full">
+
+      <div className="h-52 w-full">
         <ResponsiveContainer>
-          <LineChart data={liveTrajectory} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+          <AreaChart data={series} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
               tickFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                new Date(v).toLocaleDateString("en", { month: "short", year: "2-digit" })
               }
               minTickGap={40}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
               axisLine={false}
               tickLine={false}
-              width={32}
-              domain={[0, Math.ceil(goal * 1.05)]}
+              width={30}
+              domain={[0, yMax]}
             />
             <Tooltip
               contentStyle={{
@@ -1413,27 +1460,123 @@ function TrajectoryMini({
                 fontSize: 12,
               }}
               labelFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                new Date(v).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
               }
+              formatter={(v: number) => [v, "Closed"]}
             />
-            <ReferenceLine
-              y={goal}
-              stroke="oklch(0.65 0.02 260)"
-              strokeDasharray="4 4"
-              strokeWidth={1.5}
-              label={{
-                value: goalLabel,
-                position: "insideTopRight",
-                fill: "oklch(0.45 0.02 260)",
-                fontSize: 10,
-                fontWeight: 600,
-              }}
+            {goal != null && (
+              <ReferenceLine
+                y={goal}
+                stroke="oklch(0.55 0.02 260)"
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                label={{
+                  value: goalLabel ?? `Goal · ${goal}`,
+                  position: "insideTopRight",
+                  fill: "oklch(0.42 0.02 260)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              />
+            )}
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={color}
+              strokeWidth={2.5}
+              fill={`url(#${gradId})`}
             />
-            <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-    </div>
+
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span>Each closure</span>
+          <span className="font-normal normal-case tracking-normal">
+            click a dot to see what closed
+          </span>
+        </div>
+        <div className="relative h-7 rounded-md border border-border bg-surface/40">
+          {buckets.map((b) => {
+            const isSel = b.key === selectedKey;
+            const size = Math.min(16, 6 + Math.log2(b.items.length + 1) * 2.5);
+            return (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => setSelectedKey(isSel ? null : b.key)}
+                title={`${new Date(b.midMs).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })} · ${b.items.length} closure${b.items.length > 1 ? "s" : ""}`}
+                className="absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full ring-1 ring-background transition hover:scale-125"
+                style={{
+                  left: `${Math.max(0, Math.min(100, b.x))}%`,
+                  width: size,
+                  height: size,
+                  backgroundColor: color,
+                  boxShadow: isSel ? `0 0 0 2px ${color}` : undefined,
+                }}
+              >
+                {b.items.length > 1 && size >= 12 ? (
+                  <span className="text-[8px] font-bold text-white">{b.items.length}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        {selected && (
+          <div className="mt-2 rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <p className="text-xs font-semibold text-foreground">
+                Closed{" "}
+                {groupByWeek ? "in week of " : "on "}
+                {new Date(selected.midMs).toLocaleDateString("en", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}{" "}
+                <span className="font-normal text-muted-foreground">
+                  · {selected.items.length} item{selected.items.length > 1 ? "s" : ""}
+                </span>
+              </p>
+              <button
+                onClick={() => setSelectedKey(null)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                close
+              </button>
+            </div>
+            <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-foreground">
+              {selected.items.slice(0, 50).map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3">
+                  <span className="truncate">
+                    {c.name}
+                    {c.meta && (
+                      <span className="ml-2 text-[10px] text-muted-foreground">· {c.meta}</span>
+                    )}
+                  </span>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">{c.date}</span>
+                </li>
+              ))}
+            </ul>
+            {selected.items.length > 50 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                + {selected.items.length - 50} more
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {footer}
+    </Card>
   );
 }
 

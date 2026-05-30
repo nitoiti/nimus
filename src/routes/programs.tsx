@@ -492,7 +492,7 @@ function AreaCard({
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>

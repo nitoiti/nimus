@@ -433,9 +433,8 @@ function AreaCard({
               const meta = STATUS_META[p.status];
               const isOpen = expanded.has(p.code);
               return (
-                <>
+                <Fragment key={p.code}>
                   <tr
-                    key={p.code}
                     className={cn(
                       "border-t border-border/60 transition-colors hover:bg-muted/30",
                       meta.row,

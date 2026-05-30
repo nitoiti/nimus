@@ -1033,6 +1033,61 @@ const liveTrajectory = (() => {
   });
 })();
 
+// Goal lines for Progress trajectories — total countable targets / milestones
+// across all 3 VB-MAPP levels for this child. The chart shows how close we are
+// to the finish line, not just how much we've done.
+const _lastTraj = liveTrajectory[liveTrajectory.length - 1] ?? { targets: 0, milestones: 0 };
+// Assume the child is currently ~78% / ~82% of the way through the full skill
+// map (matches the screenshots and keeps the goal line believable).
+const TARGETS_GOAL = Math.max(_lastTraj.targets + 10, Math.round(_lastTraj.targets / 0.78));
+const MILESTONES_GOAL = Math.max(_lastTraj.milestones + 5, Math.round(_lastTraj.milestones / 0.82));
+
+// ── Programs closed over time (separate from targets/milestones). Programs
+// are units of teaching work (e.g. "Sits nicely 1 min"). Some have per-trial
+// records (independence% can be computed), some are retrospective imports
+// with only start/end dates. The chart shows both, and a strip beneath marks
+// each program closure colored by whether trial data exists.
+type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean };
+
+const programClosures: ProgramClosure[] = (() => {
+  const start = new Date("2024-02-01").getTime();
+  const end = Date.now();
+  const totalDays = Math.max(1, (end - start) / (24 * 3600 * 1000));
+  const count = 38;
+  return Array.from({ length: count }, (_, i) => {
+    const r = seeded(i * 41 + 7);
+    const dayOffset = Math.floor(r * totalDays);
+    const d = new Date(start + dayOffset * 24 * 3600 * 1000);
+    const date = d.toISOString().slice(0, 10);
+    const isLive = date >= ERA_SPLIT;
+    // Retro era is mostly start/end-only imports (few have trial data).
+    // Live era is mostly trial-tracked, but some programs (e.g. duration
+    // criteria like "sits nicely") still have no trial data.
+    const hasTrialData = isLive
+      ? seeded(i * 53 + 11) > 0.28
+      : seeded(i * 53 + 11) > 0.9;
+    return { id: `prog-${i}`, closedAt: date, hasTrialData };
+  }).sort((a, b) => a.closedAt.localeCompare(b.closedAt));
+})();
+
+const PROGRAMS_GOAL = Math.max(60, programClosures.length + 18);
+
+// Weekly cumulative program closures (split by trial-data availability).
+const programClosureSeries = (() => {
+  return masteryTrajectory.map((w) => {
+    const upTo = programClosures.filter((p) => p.closedAt <= w.date);
+    return {
+      date: w.date,
+      closed: upTo.length,
+      withTrialData: upTo.filter((p) => p.hasTrialData).length,
+    };
+  });
+})();
+
+const _trialCount = programClosures.filter((p) => p.hasTrialData).length;
+const _noTrialCount = programClosures.length - _trialCount;
+
+
 // Active developmental level = the lowest level that isn't 100% complete.
 // Levels above the active one aren't "stalled" — they're scheduled for later
 // once the current level's foundation is solid. This matches how BCBAs run

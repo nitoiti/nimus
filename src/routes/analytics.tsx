@@ -328,10 +328,11 @@ function Analytics() {
         <ProgressTrajectoriesCard />
       </div>
 
-      {/* 5. Long-range cumulative mastery (historical context). */}
+      {/* 5. Programs closed — units of teaching work, with/without trial data. */}
       <div className="mb-6">
-        <MasteryTrajectoryCard />
+        <ProgramsClosedCard />
       </div>
+
 
       {/* 6. Trial-level behaviour — independence & prompt dependence. */}
       <div className="mb-6">

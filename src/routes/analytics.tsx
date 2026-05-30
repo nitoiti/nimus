@@ -668,42 +668,86 @@ function VbMappCard() {
 
 /* ──────────────────────────────────────────────────────────────────────────
    SkillMapCard — velocity & forecasts derived from the skill map.
-   The skill-map page already answers "what's mastered?". Analytics answers
-   "how fast are we closing milestones, is that pace accelerating or
-   slowing, and when will we finish each level if we keep this up?"
+
+   Why targets (not milestones) drive the headline numbers
+   -------------------------------------------------------
+   A VB-MAPP milestone is not a uniform unit — some milestones are a single
+   discrete skill ("touches 1 body part on instruction"), others are a chain
+   of 5–10 sub-skills ("manually signs 20 different mands across 3 contexts").
+   The VB-MAPP Task Analysis adds ~900 supporting targets across the same
+   170 milestones. Counting milestones therefore under-weights heavy
+   milestones and makes pace look stalled even when real clinical progress
+   is happening. Velocity, cadence and forecasts here use **targets closed**
+   as the unit; milestone closures are surfaced separately as a coarser
+   "stage complete" signal.
    ────────────────────────────────────────────────────────────────────────── */
 
-// Live weekly closures (deltas from masteryTrajectory).
+// Approx target count per milestone, modelled to match VB-MAPP's variance
+// (1 → 10 supporting targets / sub-skills per milestone, avg ~4.5).
+const TARGETS_PER_MILESTONE = (i: number) => 2 + Math.round(seeded(i * 17 + 3) * 6);
+
+// Live weekly milestone closures (deltas from masteryTrajectory).
 const liveWeekly = (() => {
   const live = masteryTrajectory.filter((w) => w.era === "live");
   return live.map((w, i) => ({
     date: w.date,
-    delta: i === 0 ? w.mastered - (masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0) : w.mastered - live[i - 1].mastered,
+    delta:
+      i === 0
+        ? w.mastered - (masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0)
+        : w.mastered - live[i - 1].mastered,
   }));
 })();
 
+// Live weekly target closures. Targets close more frequently than milestones —
+// a child can close 2–3 targets within a milestone before the milestone itself
+// is signed off. We seed weeks that had a milestone closure with a fat burst,
+// and add 0–3 standalone target closures on most other weeks.
+const liveWeeklyTargets = liveWeekly.map((w, i) => {
+  const milestoneBurst = w.delta > 0 ? w.delta * (3 + Math.round(seeded(i * 13) * 4)) : 0;
+  const standalone =
+    w.delta > 0 ? 0 : seeded(i * 11 + 5) > 0.35 ? 1 + Math.round(seeded(i * 19) * 2) : 0;
+  return { date: w.date, delta: milestoneBurst + standalone };
+});
+
 const sumDelta = (xs: { delta: number }[]) => xs.reduce((s, x) => s + x.delta, 0);
-const recent12w = liveWeekly.slice(-12);
-const last4w = liveWeekly.slice(-4);
-const prior4w = liveWeekly.slice(-8, -4);
-const velocityLast4 = sumDelta(last4w) / 4;
-const velocityPrior4 = sumDelta(prior4w) / 4;
-const velocityDeltaPct =
-  velocityPrior4 > 0
-    ? Math.round(((velocityLast4 - velocityPrior4) / velocityPrior4) * 100)
+
+const recent12wTargets = liveWeeklyTargets.slice(-12);
+const last4wTargets = liveWeeklyTargets.slice(-4);
+const prior4wTargets = liveWeeklyTargets.slice(-8, -4);
+
+const targetsLast4 = sumDelta(last4wTargets);
+const targetsPrior4 = sumDelta(prior4wTargets);
+const targetsPerWeek = targetsLast4 / 4;
+const targetsDeltaPct =
+  targetsPrior4 > 0
+    ? Math.round(((targetsLast4 - targetsPrior4) / targetsPrior4) * 100)
     : null;
 
-const weeksSinceLastClosure = (() => {
-  for (let i = liveWeekly.length - 1; i >= 0; i--) {
-    if (liveWeekly[i].delta > 0) return liveWeekly.length - 1 - i;
-  }
-  return liveWeekly.length;
+// Cadence — average days between target closures. Compares last 8w vs prior 8w.
+function cadenceDays(weeks: { delta: number }[]) {
+  const closures = weeks.reduce((s, w) => s + w.delta, 0);
+  if (closures === 0) return null;
+  return Math.round((weeks.length * 7) / closures);
+}
+const cadenceNow = cadenceDays(liveWeeklyTargets.slice(-8));
+const cadencePrev = cadenceDays(liveWeeklyTargets.slice(-16, -8));
+
+// Cumulative trajectories — used by the combined milestones+targets chart.
+const liveTrajectory = (() => {
+  let mCum = masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0;
+  let tCum = mCum * 4; // assume retro targets ~ 4× milestones (estimate, hatched on chart)
+  return liveWeekly.map((w, i) => {
+    mCum += w.delta;
+    tCum += liveWeeklyTargets[i].delta;
+    return { date: w.date, milestones: mCum, targets: tCum };
+  });
 })();
 
-// Per-level forecasts. Live velocity is split by where the remaining work
-// actually sits — most clinical effort over the last month has been on L2.
-// Share is a clinical assumption surfaced in the subtitle, not a hidden fact.
-const LEVEL_VELOCITY_SHARE = [0.15, 0.6, 0.25];
+// Active developmental level = the lowest level that isn't 100% complete.
+// Levels above the active one aren't "stalled" — they're scheduled for later
+// once the current level's foundation is solid. This matches how BCBAs run
+// VB-MAPP: bottom-up, area-by-area within a level.
+const activeLevelIdx = vbMappLevels.findIndex((l) => l.mastered < l.total);
 
 type LevelForecast = {
   level: number;
@@ -712,49 +756,84 @@ type LevelForecast = {
   total: number;
   pct: number;
   remaining: number;
-  weekly: number;
-  status: "complete" | "on-track" | "slowing" | "stalled";
-  etaLabel: string;
+  weeklyTargets: number;
+  isActive: boolean;
+  isComplete: boolean;
+  etaLabel: string | null;
   etaDate: string | null;
+  pacing: "on-track" | "slowing" | "building" | null;
 };
 
+// Estimate targets remaining per level using avg targets-per-milestone.
 const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
   const pct = Math.round((lv.mastered / lv.total) * 100);
-  const remaining = lv.total - lv.mastered;
-  const weekly = velocityLast4 * LEVEL_VELOCITY_SHARE[i];
-  if (remaining === 0) {
+  const remainingMilestones = lv.total - lv.mastered;
+  // Avg supporting targets per milestone within this level (seeded).
+  const avgTargets =
+    Array.from({ length: 5 }, (_, k) => TARGETS_PER_MILESTONE(i * 50 + k)).reduce(
+      (s, x) => s + x,
+      0,
+    ) / 5;
+  const remainingTargets = Math.round(remainingMilestones * avgTargets);
+  const isComplete = remainingMilestones === 0;
+  const isActive = i === activeLevelIdx;
+  // Only forecast for the active level — that's where weekly target closures
+  // are actually landing. Non-active levels get a neutral "upcoming" message.
+  if (isComplete) {
     return {
       level: lv.level,
       range: lv.range,
       mastered: lv.mastered,
       total: lv.total,
       pct,
-      remaining,
-      weekly,
-      status: "complete",
-      etaLabel: "Complete",
+      remaining: 0,
+      weeklyTargets: 0,
+      isActive: false,
+      isComplete: true,
+      etaLabel: null,
       etaDate: null,
+      pacing: null,
     };
   }
-  if (weekly <= 0.05) {
+  if (!isActive) {
     return {
       level: lv.level,
       range: lv.range,
       mastered: lv.mastered,
       total: lv.total,
       pct,
-      remaining,
-      weekly,
-      status: "stalled",
-      etaLabel: "Stalled at this level",
+      remaining: remainingMilestones,
+      weeklyTargets: 0,
+      isActive: false,
+      isComplete: false,
+      etaLabel: null,
       etaDate: null,
+      pacing: null,
     };
   }
-  const weeks = remaining / weekly;
+  // Active level — use the full target velocity, since that's where work lands.
+  const weeklyTargets = targetsPerWeek;
+  if (weeklyTargets < 0.5) {
+    return {
+      level: lv.level,
+      range: lv.range,
+      mastered: lv.mastered,
+      total: lv.total,
+      pct,
+      remaining: remainingMilestones,
+      weeklyTargets,
+      isActive: true,
+      isComplete: false,
+      etaLabel: null,
+      etaDate: null,
+      pacing: "building",
+    };
+  }
+  const weeks = remainingTargets / weeklyTargets;
   const ms = Date.now() + weeks * 7 * 24 * 60 * 60 * 1000;
   const etaDate = new Date(ms).toISOString().slice(0, 10);
-  const status: LevelForecast["status"] =
-    velocityDeltaPct !== null && velocityDeltaPct < -15 ? "slowing" : "on-track";
+  const pacing: LevelForecast["pacing"] =
+    targetsDeltaPct !== null && targetsDeltaPct < -20 ? "slowing" : "on-track";
   const etaLabel =
     weeks < 1.5
       ? `~${Math.max(1, Math.round(weeks * 7))} days`
@@ -767,54 +846,72 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
     mastered: lv.mastered,
     total: lv.total,
     pct,
-    remaining,
-    weekly,
-    status,
+    remaining: remainingMilestones,
+    weeklyTargets,
+    isActive: true,
+    isComplete: false,
     etaLabel,
     etaDate,
+    pacing,
   };
 });
 
-// Curated movers — derived from the emerging queue + recent live deltas.
-// In production these come from per-area weekly closure counts; here we keep
-// the shape stable for the prototype.
+// Movers — target-based counts so a single milestone with many sub-skills
+// can still register as movement. Areas where targets are closing faster
+// than the prior 4 weeks; areas with emerging targets but no closures.
 const areaAccelerating = [
-  { name: "Mand", code: "MND", recent: 3, prior: 1 },
-  { name: "VP-MTS", code: "VPM", recent: 2, prior: 0 },
-  { name: "Tact", code: "TCT", recent: 2, prior: 1 },
+  { name: "Mand", code: "MND", recent: 11, prior: 4 },
+  { name: "VP-MTS", code: "VPM", recent: 7, prior: 2 },
+  { name: "Tact", code: "TCT", recent: 6, prior: 3 },
 ];
 const areaStalling = [
-  { name: "Listener", code: "LSN", weeksIdle: 6, emerging: 3 },
-  { name: "Self-Help / DLS", code: "DLS", weeksIdle: 5, emerging: 4 },
-  { name: "Classroom", code: "GRP", weeksIdle: 4, emerging: 2 },
+  { name: "Listener", code: "LSN", weeksIdle: 6, emergingTargets: 9 },
+  { name: "Self-Help / DLS", code: "DLS", weeksIdle: 5, emergingTargets: 12 },
+  { name: "Classroom", code: "GRP", weeksIdle: 4, emergingTargets: 6 },
 ];
 
 function SkillMapCard() {
-  const trendUp = velocityDeltaPct !== null && velocityDeltaPct > 0;
-  const trendDown = velocityDeltaPct !== null && velocityDeltaPct < 0;
+  const trendUp = targetsDeltaPct !== null && targetsDeltaPct > 0;
+  const trendDown = targetsDeltaPct !== null && targetsDeltaPct < 0;
   const TrendIcon = trendUp ? TrendingUp : trendDown ? TrendingDown : Minus;
   const trendTone = trendUp
     ? "text-success"
     : trendDown
       ? "text-destructive"
       : "text-muted-foreground";
-  const streakTone =
-    weeksSinceLastClosure === 0
-      ? "text-success"
-      : weeksSinceLastClosure >= 3
-        ? "text-destructive"
-        : "text-warning-foreground";
-  const streakLabel =
-    weeksSinceLastClosure === 0
-      ? "Active this week"
-      : weeksSinceLastClosure === 1
-        ? "1 week since last closure"
-        : `${weeksSinceLastClosure} weeks since last closure`;
+
+  // Cadence framing: "1 target every N days, was M". Faster (smaller N) = good.
+  const cadenceTone =
+    cadenceNow === null
+      ? "text-muted-foreground"
+      : cadencePrev === null
+        ? "text-foreground"
+        : cadenceNow < cadencePrev
+          ? "text-success"
+          : cadenceNow > cadencePrev * 1.2
+            ? "text-destructive"
+            : "text-foreground";
+  const cadenceLabel =
+    cadenceNow === null
+      ? "No target closures in the last 8 weeks"
+      : cadenceNow === 1
+        ? "1 target / day"
+        : `1 target every ${cadenceNow} days`;
+  const cadenceSub =
+    cadenceNow === null
+      ? "Cadence appears when target-level data is available."
+      : cadencePrev === null
+        ? "Average over the last 8 weeks."
+        : cadenceNow < cadencePrev
+          ? `Faster than the prior 8 weeks (was every ${cadencePrev} days).`
+          : cadenceNow > cadencePrev
+            ? `Slower than the prior 8 weeks (was every ${cadencePrev} days).`
+            : `Matches the prior 8-week cadence (${cadencePrev} days).`;
 
   return (
     <Card
       title="Skill map velocity & forecast"
-      subtitle="How fast we're closing VB-MAPP milestones, where the pace is shifting, and — at the current rate — when each level finishes. Forecasts assume live trial volume holds steady; pause if intervention plans change."
+      subtitle="How fast we're closing VB-MAPP targets (the sub-skills inside each milestone), where the pace is shifting, and — at the current rate — when the active developmental level finishes. Targets are the unit here because milestones vary from 1 to 10 sub-skills."
     >
       {/* Velocity hero row */}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -824,15 +921,17 @@ function SkillMapCard() {
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold tabular-nums text-foreground">
-              {velocityLast4.toFixed(1)}
+              {targetsPerWeek.toFixed(1)}
             </span>
-            <span className="text-xs text-muted-foreground">milestones / week</span>
+            <span className="text-xs text-muted-foreground">targets / week</span>
           </div>
-          {velocityDeltaPct !== null ? (
-            <div className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}>
+          {targetsDeltaPct !== null ? (
+            <div
+              className={`mt-1 inline-flex items-center gap-1 text-[11px] font-medium ${trendTone}`}
+            >
               <TrendIcon className="size-3" />
-              {velocityDeltaPct > 0 ? "+" : ""}
-              {velocityDeltaPct}% vs prior 4 weeks
+              {targetsDeltaPct > 0 ? "+" : ""}
+              {targetsDeltaPct}% vs prior 4 weeks
             </div>
           ) : (
             <div className="mt-1 text-[11px] text-muted-foreground">
@@ -842,52 +941,32 @@ function SkillMapCard() {
         </div>
         <div className="rounded-xl border border-border bg-surface/40 px-4 py-3.5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Last closure
+            Closure cadence
           </div>
-          <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${streakTone}`}>
-            {streakLabel}
+          <div className={`mt-1 font-display text-2xl font-bold tabular-nums ${cadenceTone}`}>
+            {cadenceLabel}
           </div>
-          <div className="mt-1 text-[11px] text-muted-foreground">
-            {weeksSinceLastClosure === 0
-              ? "A milestone was mastered in the current week."
-              : weeksSinceLastClosure < 3
-                ? "Pace is normal — keep probing emerging targets."
-                : "Long gap — review programs linked to stalled levels."}
-          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">{cadenceSub}</div>
         </div>
       </div>
 
-
-      {/* Forecast per level */}
-      <div className="mt-5">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Forecast by developmental level
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          {levelForecasts.map((lf) => (
-            <LevelForecastCard key={lf.level} f={lf} />
-          ))}
-        </div>
-      </div>
-
-      {/* Weekly velocity sparkline */}
-      {sumDelta(recent12w) > 0 ? (
+      {/* Combined milestones + targets trajectory (live era only) */}
+      {liveTrajectory.length > 1 && (
         <div className="mt-5">
           <div className="mb-2 flex items-baseline justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Weekly closures — last 12 weeks
+              Skill-map trajectory — targets &amp; milestones
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Avg{" "}
-              <span className="font-semibold text-foreground tabular-nums">
-                {(sumDelta(recent12w) / 12).toFixed(1)}
-              </span>{" "}
-              / week
+              Targets advance continuously; milestones step up when a whole sub-skill chain closes.
             </p>
           </div>
-          <div className="h-24 w-full">
+          <div className="h-48 w-full">
             <ResponsiveContainer>
-              <BarChart data={recent12w} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+              <LineChart
+                data={liveTrajectory}
+                margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
+              >
                 <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
                 <XAxis
                   dataKey="date"
@@ -895,16 +974,24 @@ function SkillMapCard() {
                   tickFormatter={(v) =>
                     new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
                   }
-                  minTickGap={30}
+                  minTickGap={40}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+                  yAxisId="targets"
+                  tick={{ fontSize: 10, fill: "oklch(0.52 0.21 280)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={32}
+                />
+                <YAxis
+                  yAxisId="milestones"
+                  orientation="right"
+                  tick={{ fontSize: 10, fill: "oklch(0.62 0.13 200)" }}
                   axisLine={false}
                   tickLine={false}
                   width={28}
-                  allowDecimals={false}
                 />
                 <Tooltip
                   contentStyle={{
@@ -915,33 +1002,61 @@ function SkillMapCard() {
                   labelFormatter={(v) =>
                     new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
                   }
-                  formatter={(v: number) => [v, "Mastered"]}
                 />
-                <Bar dataKey="delta" radius={[3, 3, 0, 0]}>
-                  {recent12w.map((d, i) => (
-                    <Cell
-                      key={i}
-                      fill={d.delta === 0 ? "oklch(0.9 0.01 250)" : "oklch(0.52 0.21 280)"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
+                <Line
+                  yAxisId="targets"
+                  type="monotone"
+                  dataKey="targets"
+                  stroke="oklch(0.52 0.21 280)"
+                  strokeWidth={2.5}
+                  dot={false}
+                  name="Targets (cum.)"
+                />
+                <Line
+                  yAxisId="milestones"
+                  type="stepAfter"
+                  dataKey="milestones"
+                  stroke="oklch(0.62 0.13 200)"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  name="Milestones (cum.)"
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
+          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
+            <Legend swatch="bg-primary" label="Targets (cumulative)" />
+            <Legend swatch="bg-info" dashed label="Milestones (cumulative)" />
+          </div>
         </div>
-      ) : null}
+      )}
 
+      {/* Forecast per level */}
+      <div className="mt-5">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Forecast by developmental level
+        </p>
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          Only the active level is forecast — higher levels are sequenced for later, not stalled.
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {levelForecasts.map((lf) => (
+            <LevelForecastCard key={lf.level} f={lf} />
+          ))}
+        </div>
+      </div>
 
       {/* Movers */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <MoversList
           title="Accelerating areas"
-          subtitle="Closing milestones faster than the prior 4 weeks."
+          subtitle="Closing more targets than the prior 4 weeks."
           tone="success"
           items={areaAccelerating.map((a) => ({
             primary: a.name,
             code: a.code,
-            secondary: `${a.recent} closed in last 4w · was ${a.prior}`,
+            secondary: `${a.recent} targets closed in last 4w · was ${a.prior}`,
             badge: `+${a.recent - a.prior}`,
           }))}
         />
@@ -952,12 +1067,11 @@ function SkillMapCard() {
           items={areaStalling.map((a) => ({
             primary: a.name,
             code: a.code,
-            secondary: `${a.weeksIdle}w idle · ${a.emerging} emerging`,
+            secondary: `${a.weeksIdle}w idle · ${a.emergingTargets} emerging targets`,
             badge: `${a.weeksIdle}w`,
           }))}
         />
       </div>
-
     </Card>
   );
 }

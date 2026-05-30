@@ -974,16 +974,6 @@ function cadenceDays(weeks: { delta: number }[]) {
 const cadenceNow = cadenceDays(liveWeeklyTargets.slice(-8));
 const cadencePrev = cadenceDays(liveWeeklyTargets.slice(-16, -8));
 
-// Cumulative trajectories — used by the combined milestones+targets chart.
-const liveTrajectory = (() => {
-  let mCum = masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0;
-  let tCum = mCum * 4; // assume retro targets ~ 4× milestones (estimate, hatched on chart)
-  return liveWeekly.map((w, i) => {
-    mCum += w.delta;
-    tCum += liveWeeklyTargets[i].delta;
-    return { date: w.date, milestones: mCum, targets: tCum };
-  });
-})();
 
 // ── Per-level closure simulation (named, dated) ──────────────────────────
 // For the active VB-MAPP level we surface every closed milestone + target as

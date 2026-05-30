@@ -782,7 +782,7 @@ function DevAgeCard() {
   return (
     <Card
       title="Developmental age"
-      subtitle="A single number for parents — where this child is functionally vs their biological age. Driven by the weakest VB-MAPP area, because one lagging area limits real-world function."
+      subtitle="A single number for parents — how much of the early-childhood skill ladder this child has mastered, expressed in months. Driven by the weakest VB-MAPP area, because one lagging area limits real-world function."
     >
       <div className="grid gap-4 md:grid-cols-3">
         {/* Hero number */}

@@ -50,7 +50,10 @@ const masteryTrajectory = (() => {
   const start = new Date("2024-02-01");
   const weeks: { date: string; mastered: number; era: "retro" | "live" }[] = [];
   let total = 0;
-  for (let i = 0; i < 70; i++) {
+  // Generate weeks from Feb 2024 up to (roughly) today so the live era has data.
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const count = Math.max(70, Math.ceil((Date.now() - start.getTime()) / WEEK_MS));
+  for (let i = 0; i < count; i++) {
     const d = new Date(start);
     d.setDate(d.getDate() + i * 7);
     const iso = d.toISOString().slice(0, 10);
@@ -69,7 +72,9 @@ const masteryTrajectory = (() => {
 // Weekly independence% (live era only)
 const independenceTrend = (() => {
   const start = new Date(ERA_SPLIT);
-  return Array.from({ length: 40 }, (_, i) => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const count = Math.max(40, Math.ceil((Date.now() - start.getTime()) / WEEK_MS));
+  return Array.from({ length: count }, (_, i) => {
     const d = new Date(start);
     d.setDate(d.getDate() + i * 7);
     const base = 42 + i * 0.7 + Math.sin(i / 3) * 6;
@@ -301,33 +306,67 @@ function Analytics() {
       <HeroInsight />
       <KpiStrip />
       <DataEraBanner />
-      <div className="mb-6">
-        <MasteryTrajectoryCard />
-      </div>
 
+      {/* 1. The single most parent-facing number. */}
       <div className="mb-6">
         <DevAgeCard />
       </div>
 
+      {/* 2. Where the child is on the VB-MAPP ladder + when the active level lands. */}
+      <div className="mb-6">
+        <VbMappCard />
+      </div>
+
+      {/* 3. How fast we're moving right now (pace, cadence, movers). */}
       <div className="mb-6">
         <SkillMapCard />
       </div>
 
-
-      <div className="mb-6 grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <IndependenceTrendCard />
-        </div>
-        <div className="lg:col-span-2">
-          <VbMappCard />
-        </div>
+      {/* 4. Progress shape over time — continuous vs stepped. */}
+      <div className="mb-6">
+        <ProgressTrajectoriesCard />
       </div>
 
+      {/* 5. Long-range cumulative mastery (historical context). */}
+      <div className="mb-6">
+        <MasteryTrajectoryCard />
+      </div>
+
+      {/* 6. Trial-level behaviour — independence & prompt dependence. */}
+      <div className="mb-6">
+        <IndependenceTrendCard />
+      </div>
 
       <PromptByAreaCard />
       <ActiveTargetsCard />
       <DataQualityFooter />
     </AppLayout>
+  );
+}
+
+function ProgressTrajectoriesCard() {
+  return (
+    <Card
+      title="Progress trajectories"
+      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off — two lenses on the same work."
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <TrajectoryMini
+          label="Cumulative targets mastered"
+          help="Each closed sub-skill bumps this line — day-to-day signal."
+          dataKey="targets"
+          color="oklch(0.52 0.21 280)"
+          type="monotone"
+        />
+        <TrajectoryMini
+          label="Cumulative milestones mastered"
+          help="Steps up when a full milestone signs off."
+          dataKey="milestones"
+          color="oklch(0.62 0.13 200)"
+          type="stepAfter"
+        />
+      </div>
+    </Card>
   );
 }
 
@@ -629,13 +668,41 @@ function IndependenceTrendCard() {
 
 function VbMappCard() {
   return (
-    <Card title="VB-MAPP levels" subtitle="Milestones mastered per developmental level.">
+    <Card
+      title="VB-MAPP levels & forecast"
+      subtitle="Milestones mastered per developmental level, with an ETA for the level currently in focus."
+    >
       <div className="space-y-3">
-        {vbMappLevels.map((l) => {
+        {vbMappLevels.map((l, i) => {
           const pct = Math.round((l.mastered / l.total) * 100);
           const complete = l.status === "complete";
+          const f = levelForecasts[i];
+          const isActive = f?.isActive;
+          const eta = f?.etaLabel;
+          const etaDate = f?.etaDate
+            ? new Date(f.etaDate).toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : null;
+          const statusLabel = complete
+            ? "Complete"
+            : isActive
+              ? "Current focus"
+              : "Sequenced";
+          const statusTone = complete
+            ? "text-success"
+            : isActive
+              ? "text-info"
+              : "text-muted-foreground";
           return (
-            <div key={l.level} className="rounded-xl border border-border bg-surface/50 p-4">
+            <div
+              key={l.level}
+              className={`rounded-xl border bg-surface/50 p-4 ${
+                isActive ? "border-info/40 bg-info/5" : "border-border"
+              }`}
+            >
               <div className="flex items-baseline justify-between">
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -644,11 +711,9 @@ function VbMappCard() {
                   <span className="ml-2 text-[11px] text-muted-foreground">{l.range}</span>
                 </div>
                 <span
-                  className={`text-[10px] font-bold uppercase tracking-wider ${
-                    complete ? "text-success" : "text-info"
-                  }`}
+                  className={`text-[10px] font-bold uppercase tracking-wider ${statusTone}`}
                 >
-                  {complete ? "Complete" : "In progress"}
+                  {statusLabel}
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
@@ -663,6 +728,29 @@ function VbMappCard() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
+              {/* Forecast row — only meaningful for the active level. */}
+              {!complete && (
+                <div className="mt-3 border-t border-border/60 pt-2.5 text-[11px] leading-relaxed">
+                  {isActive ? (
+                    etaDate ? (
+                      <div className="text-foreground">
+                        <span className="font-semibold">Projected completion</span>{" "}
+                        <span className="tabular-nums">{etaDate}</span>{" "}
+                        <span className="text-muted-foreground">({eta} at current pace)</span>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">Building pace</span> —
+                        close a few more targets to generate a date.
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-muted-foreground">
+                      Forecast appears once Level {l.level - 1} completes.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -1160,50 +1248,9 @@ function SkillMapCard() {
         </div>
       </div>
 
-      {/* Two separate trajectories — programs/milestones close in steps; targets advance continuously */}
-      <div className="mt-6">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Progress trajectories
-        </p>
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          Targets accumulate continuously; milestones step up when a whole group signs off.
-        </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <TrajectoryMini
-            label="Cumulative targets mastered"
-            help="Each closed sub-skill bumps this line — day-to-day signal."
-            dataKey="targets"
-            color="oklch(0.52 0.21 280)"
-            type="monotone"
-          />
-          <TrajectoryMini
-            label="Cumulative milestones mastered"
-            help="Steps up when a full milestone signs off."
-            dataKey="milestones"
-            color="oklch(0.62 0.13 200)"
-            type="stepAfter"
-          />
-        </div>
-      </div>
-
-
-      {/* Forecast per level */}
-      <div className="mt-5">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Forecast by developmental level
-        </p>
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          Only the active level is forecast — higher levels are sequenced for later, not stalled.
-        </p>
-        <div className="grid gap-3 md:grid-cols-3">
-          {levelForecasts.map((lf) => (
-            <LevelForecastCard key={lf.level} f={lf} />
-          ))}
-        </div>
-      </div>
-
-      {/* Movers */}
+      {/* Movers — what's accelerating vs stalling at the area level. */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
+
         <MoversList
           title="Accelerating areas"
           subtitle="Closing more targets than the prior 4 weeks."

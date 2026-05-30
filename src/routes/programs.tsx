@@ -85,6 +85,43 @@ const STATUS_META: Record<
 
 /* ───────────────────────── Types & seed ───────────────────────── */
 
+/* ───────────────────────── Date helpers ───────────────────────── */
+
+function parseDdMmYy(s?: string): Date | undefined {
+  if (!s || s === "—") return undefined;
+  const parts = s.split(".").map((x) => Number(x));
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return undefined;
+  const [d, m, y] = parts;
+  return new Date(2000 + y, m - 1, d);
+}
+
+function fmtDdMmYy(d: Date): string {
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getFullYear() % 100).padStart(2, "0")}`;
+}
+
+/* ───────────────────────── Stimuli (mock) ───────────────────────── */
+
+type StimulusState = "in-program" | "target" | "mastered";
+
+const STIMULUS_META: Record<StimulusState, { label: string; chip: string; icon: typeof CircleDot }> = {
+  "in-program": { label: "In program", chip: "bg-muted text-muted-foreground", icon: CircleDot },
+  target: { label: "Target", chip: "bg-[oklch(0.95_0.04_250)] text-[oklch(0.4_0.18_260)]", icon: TargetIcon },
+  mastered: { label: "Mastered", chip: "bg-[oklch(0.95_0.05_160)] text-[oklch(0.4_0.14_160)]", icon: CheckCircle2 },
+};
+
+function mockStimuli(code: string, count: number): { label: string; state: StimulusState }[] {
+  // Deterministic placeholder stimuli per program code
+  const labels = ["cat", "dog", "ball", "cup", "book", "shoe", "car", "spoon", "apple", "chair"];
+  const out: { label: string; state: StimulusState }[] = [];
+  for (let i = 0; i < count; i++) {
+    const s: StimulusState = i < Math.floor(count / 3) ? "mastered" : i < Math.floor((count * 2) / 3) ? "target" : "in-program";
+    out.push({ label: `${labels[i % labels.length]} (${code}.${i + 1})`, state: s });
+  }
+  return out;
+}
+
+/* ───────────────────────── Types & seed ───────────────────────── */
+
 type Program = {
   code: string;
   name: string;

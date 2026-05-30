@@ -8,9 +8,13 @@ import {
   Plus,
   Library,
   ChevronRight,
-  Calendar,
+  Calendar as CalendarIcon,
   Search,
   Sparkles,
+  Check,
+  CircleDot,
+  Target as TargetIcon,
+  CheckCircle2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +26,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 export const Route = createFileRoute("/programs")({
   component: ProgramsPage,

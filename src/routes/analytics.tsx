@@ -522,174 +522,33 @@ function DataEraBanner() {
 }
 
 function ProgramsClosedCard() {
-  const chartStart = programClosureSeries[0]?.date;
-  const chartEnd = programClosureSeries[programClosureSeries.length - 1]?.date;
-  const startMs = chartStart ? new Date(chartStart).getTime() : 0;
-  const endMs = chartEnd ? new Date(chartEnd).getTime() : 1;
-  const span = Math.max(1, endMs - startMs);
-
-  const totalClosed = programClosures.length;
-  const withData = _trialCount;
-  const noData = _noTrialCount;
-  const pct = Math.round((totalClosed / PROGRAMS_GOAL) * 100);
-  const remaining = Math.max(0, PROGRAMS_GOAL - totalClosed);
-
   return (
-    <Card
+    <ClosureTimelineCard
       title="Programs closed"
-      subtitle="A program is a unit of teaching work (e.g. 'Sits nicely 1 min'). Some have per-trial records, others are start/end-only — the strip below shows which is which."
-    >
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
-        <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
-          {totalClosed}{" "}
-          <span className="text-sm font-normal text-muted-foreground">/ {PROGRAMS_GOAL} programs</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {pct}% there · {remaining} to go
-        </p>
-        <p className="ml-auto text-[11px] text-muted-foreground">
-          <span className="font-medium text-foreground">{withData}</span> with trial data ·{" "}
-          <span className="font-medium text-foreground">{noData}</span> start/end only
-        </p>
-      </div>
-      <div className="h-64 w-full">
-        <ResponsiveContainer>
-          <AreaChart
-            data={programClosureSeries}
-            margin={{ top: 12, right: 12, left: -10, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="programsGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="programsTrialGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
-              tickFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", year: "2-digit" })
-              }
-              minTickGap={40}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
-              axisLine={false}
-              tickLine={false}
-              width={30}
-              domain={[0, Math.ceil(PROGRAMS_GOAL * 1.05)]}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid oklch(0.9 0.01 250)",
-                fontSize: 12,
-                boxShadow: "0 8px 24px -12px rgba(0,0,0,.15)",
-              }}
-              labelFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })
-              }
-              formatter={(v: number, name) => [
-                v,
-                name === "closed" ? "All programs (cum.)" : "With trial data (cum.)",
-              ]}
-            />
-            <ReferenceLine
-              y={PROGRAMS_GOAL}
-              stroke="oklch(0.55 0.02 260)"
-              strokeDasharray="4 4"
-              strokeWidth={1.5}
-              label={{
-                value: `Goal · ${PROGRAMS_GOAL} programs`,
-                position: "insideTopRight",
-                fill: "oklch(0.42 0.02 260)",
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="closed"
-              stroke="oklch(0.52 0.21 280)"
-              strokeWidth={2.5}
-              fill="url(#programsGrad)"
-            />
-            <Area
-              type="monotone"
-              dataKey="withTrialData"
-              stroke="oklch(0.62 0.13 200)"
-              strokeWidth={2}
-              strokeDasharray="3 3"
-              fill="url(#programsTrialGrad)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Per-program closure strip — one dot per program, aligned to its
-          closure date, colored by whether trial data exists. Lines up
-          visually with the Independence trend chart below (which can only
-          plot weeks where trial data is present). */}
-      <div className="mt-2">
-        <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <span>Each program closure</span>
-          <span className="font-normal normal-case tracking-normal">
-            hover for date · color = trial data
+      subtitle="A program is a unit of teaching work (e.g. 'Sits nicely 1 min'). Click a dot to see which programs closed on that date."
+      color="oklch(0.52 0.21 280)"
+      closed={programClosures.length}
+      goal={null}
+      series={programClosureSeries.map((p) => ({ date: p.date, value: p.value }))}
+      closures={programClosures.map((p) => ({
+        id: p.id,
+        date: p.closedAt,
+        name: p.name,
+        meta: p.hasTrialData ? "with trial data" : "start/end only",
+      }))}
+      footer={
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2 rounded-full" style={{ backgroundColor: "oklch(0.62 0.13 200)" }} />
+            <span className="font-medium text-foreground">{_trialCount}</span> with trial data
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2 rounded-full" style={{ backgroundColor: "oklch(0.78 0.01 260)" }} />
+            <span className="font-medium text-foreground">{_noTrialCount}</span> start/end only
           </span>
         </div>
-        <div className="relative h-5 rounded-md border border-border bg-surface/40">
-          {programClosures.map((p) => {
-            const x = ((new Date(p.closedAt).getTime() - startMs) / span) * 100;
-            return (
-              <div
-                key={p.id}
-                title={`${new Date(p.closedAt).toLocaleDateString("en", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })} · ${p.hasTrialData ? "with trial data" : "start/end only"}`}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${Math.max(0, Math.min(100, x))}%` }}
-              >
-                <div
-                  className="size-2 rounded-full ring-1 ring-background"
-                  style={{
-                    backgroundColor: p.hasTrialData
-                      ? "oklch(0.62 0.13 200)"
-                      : "oklch(0.78 0.01 260)",
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-        <Legend swatch="bg-primary" label="All programs closed" />
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: "oklch(0.62 0.13 200)" }}
-          />
-          With trial data (feeds Independence trend)
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: "oklch(0.78 0.01 260)" }}
-          />
-          Start/end only (no per-trial record)
-        </span>
-      </div>
-    </Card>
+      }
+    />
   );
 }
 

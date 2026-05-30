@@ -349,7 +349,7 @@ function ProgressTrajectoriesCard() {
   return (
     <Card
       title="Progress trajectories"
-      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off — two lenses on the same work."
+      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off. Dashed line is the finish — every closed sub-skill pulls us closer."
     >
       <div className="grid gap-4 md:grid-cols-2">
         <TrajectoryMini
@@ -358,6 +358,8 @@ function ProgressTrajectoriesCard() {
           dataKey="targets"
           color="oklch(0.52 0.21 280)"
           type="monotone"
+          goal={TARGETS_GOAL}
+          goalLabel={`Goal · ${TARGETS_GOAL} targets`}
         />
         <TrajectoryMini
           label="Cumulative milestones mastered"
@@ -365,11 +367,14 @@ function ProgressTrajectoriesCard() {
           dataKey="milestones"
           color="oklch(0.62 0.13 200)"
           type="stepAfter"
+          goal={MILESTONES_GOAL}
+          goalLabel={`Goal · ${MILESTONES_GOAL} milestones`}
         />
       </div>
     </Card>
   );
 }
+
 
 /* ────────────────────────── sections ────────────────────────── */
 

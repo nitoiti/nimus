@@ -672,6 +672,217 @@ function VbMappCard() {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
+   Developmental age — one number for parents.
+
+   Methodology (prototype, surfaced in the card so it isn't a black box):
+     1. For each VB-MAPP area, compute % mastered within each level the area
+        covers (L1 = 0–18m, L2 = 18–30m, L3 = 30–48m).
+     2. Convert to developmental months per area, sequentially:
+          • if L1 < 80% mastered → areaMonths = 18 × L1pct
+          • else if L2 < 80% mastered → areaMonths = 18 + 12 × L2pct
+          • else                       → areaMonths = 30 + 18 × L3pct
+        An area must finish a level before contributing months from the next
+        one — partial mastery in a higher level can't paper over a gap below.
+     3. Overall developmental age = the MINIMUM across areas.
+        Reason: a single weak area (e.g. social) holds the child back
+        functionally; reporting an average would over-state readiness.
+     4. Gap to biological age = bioMonths − devMonths. Trend tracks whether
+        the gap is widening (falling further behind) or narrowing
+        (catching up) over the last 12 months.
+
+   This is a clinical UI proposal — the exact thresholds and the bottleneck
+   rule should be validated by a BCBA before going live in production.
+   ────────────────────────────────────────────────────────────────────────── */
+
+// Mock — in production this comes from the child profile.
+const childBirthDate = new Date("2020-02-10"); // ~5y 4m today
+const bioMonthsNow = (() => {
+  const now = new Date();
+  return (now.getFullYear() - childBirthDate.getFullYear()) * 12 + (now.getMonth() - childBirthDate.getMonth());
+})();
+
+function areaDevMonths(ai: number): number | null {
+  const cells = skillGrid[ai];
+  // Find first available level (some areas start at L2 or L3 in VB-MAPP).
+  const firstAvail = cells.findIndex((c) => c.available);
+  if (firstAvail === -1) return null;
+  const LEVEL_FLOORS = [0, 18, 30];
+  const LEVEL_SPANS = [18, 12, 18];
+  let months = LEVEL_FLOORS[firstAvail];
+  for (let l = firstAvail; l < 3; l++) {
+    const c = cells[l];
+    if (!c.available) break;
+    const denom = c.mastered + c.emerging + c.failed + c.unassessed;
+    const pct = denom > 0 ? c.mastered / denom : 0;
+    if (pct < 0.8) {
+      months = LEVEL_FLOORS[l] + LEVEL_SPANS[l] * pct;
+      return months;
+    }
+    months = LEVEL_FLOORS[l] + LEVEL_SPANS[l];
+  }
+  return months;
+}
+
+const perAreaDev = SKILL_AREAS.map((a, ai) => ({
+  code: a.code,
+  name: a.name,
+  months: areaDevMonths(ai),
+})).filter((a): a is { code: string; name: string; months: number } => a.months !== null);
+
+const devMonthsNow = perAreaDev.length
+  ? Math.round(Math.min(...perAreaDev.map((a) => a.months)))
+  : 0;
+
+// Mock: a year ago dev age was ~5 months lower. In production this comes
+// from a recomputation against the snapshot 12 months back.
+const devMonths12moAgo = Math.max(0, devMonthsNow - 5);
+const gapNow = bioMonthsNow - devMonthsNow;
+const gap12moAgo = bioMonthsNow - 12 - devMonths12moAgo;
+const gapChange = gapNow - gap12moAgo; // negative = catching up, positive = falling further behind
+
+const bottomAreas = [...perAreaDev].sort((a, b) => a.months - b.months).slice(0, 4);
+
+function fmtMonths(m: number) {
+  const y = Math.floor(m / 12);
+  const mo = Math.round(m - y * 12);
+  if (y === 0) return `${mo} mo`;
+  return mo === 0 ? `${y}y` : `${y}y ${mo}mo`;
+}
+
+function DevAgeCard() {
+  const devPct = bioMonthsNow > 0 ? Math.min(100, (devMonthsNow / bioMonthsNow) * 100) : 0;
+  const catchingUp = gapChange < 0;
+  const holdingPace = Math.abs(gapChange) <= 1;
+  const trendTone = catchingUp
+    ? "text-success"
+    : holdingPace
+      ? "text-foreground"
+      : "text-destructive";
+  const TrendIcon = catchingUp ? TrendingUp : holdingPace ? Minus : TrendingDown;
+  const trendLabel = catchingUp
+    ? `Catching up — gap narrowed ${Math.abs(gapChange)} mo this year`
+    : holdingPace
+      ? `Holding the gap steady (${Math.abs(gapChange)} mo change this year)`
+      : `Gap widened ${gapChange} mo this year`;
+
+  return (
+    <Card
+      title="Developmental age"
+      subtitle="A single number for parents — where this child is functionally vs their biological age. Driven by the weakest VB-MAPP area, because one lagging area limits real-world function."
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        {/* Hero number */}
+        <div className="rounded-2xl border border-border bg-surface/40 p-5 md:col-span-2">
+          <div className="flex items-baseline gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Developmental age
+              </div>
+              <div className="mt-1 font-display text-4xl font-bold tabular-nums text-foreground">
+                {fmtMonths(devMonthsNow)}
+              </div>
+            </div>
+            <div className="ml-auto text-right">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Biological age
+              </div>
+              <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-muted-foreground">
+                {fmtMonths(bioMonthsNow)}
+              </div>
+            </div>
+          </div>
+
+          {/* Age progress bar */}
+          <div className="mt-4">
+            <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${devPct}%` }}
+              />
+              <div
+                className="absolute top-0 h-full w-px bg-foreground/60"
+                style={{ left: "100%" }}
+              />
+            </div>
+            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+              <span>0</span>
+              <span>
+                Gap: <span className="font-semibold text-foreground">{fmtMonths(gapNow)}</span>{" "}
+                behind bio age
+              </span>
+              <span>{fmtMonths(bioMonthsNow)}</span>
+            </div>
+          </div>
+
+          <div className={`mt-3 inline-flex items-center gap-1.5 text-xs font-medium ${trendTone}`}>
+            <TrendIcon className="size-3.5" /> {trendLabel}
+          </div>
+        </div>
+
+        {/* Bottleneck areas — what's holding the score down */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Holding the score down
+          </div>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Lowest-developmental areas — pulling the overall number up means closing gaps here.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {bottomAreas.map((a) => (
+              <li
+                key={a.code}
+                className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      {a.code}
+                    </span>
+                  </div>
+                </div>
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tabular-nums text-foreground">
+                  {fmtMonths(Math.round(a.months))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Methodology footnote */}
+      <details className="mt-4 rounded-xl border border-border bg-surface/30 px-4 py-3 text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground">
+          How this number is calculated
+        </summary>
+        <div className="mt-2 space-y-1.5 leading-relaxed">
+          <p>
+            <span className="font-medium text-foreground">Per area:</span> we walk the VB-MAPP
+            levels in order (L1 0–18m → L2 18–30m → L3 30–48m). An area only graduates to the next
+            level once it crosses 80% mastery in the current one. Partial progress higher up doesn't
+            count if the foundation isn't solid.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Overall:</span> we take the MINIMUM
+            across areas, not the average. A child whose social skills sit at 12 months while
+            everything else is at 30 months is functionally a 12-month-old in social contexts —
+            averaging would mislead parents into thinking he's caught up.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">The fight:</span> the goal isn't to match
+            same-age peers — it's to keep the gap from widening. Every month of biological age
+            should be matched by at least a month of developmental growth. The trend line above
+            tracks exactly that.
+          </p>
+        </div>
+      </details>
+    </Card>
+  );
+}
+
+
+
+/* ──────────────────────────────────────────────────────────────────────────
    SkillMapCard — velocity & forecasts derived from the skill map.
 
    Why targets (not milestones) drive the headline numbers

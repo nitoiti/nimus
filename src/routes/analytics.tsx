@@ -787,77 +787,50 @@ function DevAgeCard() {
       <div className="grid gap-4 md:grid-cols-3">
         {/* Hero number */}
         <div className="rounded-2xl border border-border bg-surface/40 p-5 md:col-span-2">
-          <div className="flex items-baseline gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Developmental age
-              </div>
-              <div className="mt-1 font-display text-4xl font-bold tabular-nums text-foreground">
-                {fmtMonths(devMonthsNow)}
-              </div>
-            </div>
-            <div className="ml-auto text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Biological age
-              </div>
-              <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-muted-foreground">
-                {fmtMonths(bioMonthsNow)}
-              </div>
-            </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Developmental age
           </div>
-
-          {/* Age progress bar */}
-          <div className="mt-4">
-            <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${devPct}%` }}
-              />
-              <div
-                className="absolute top-0 h-full w-px bg-foreground/60"
-                style={{ left: "100%" }}
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-              <span>0</span>
-              <span>
-                Gap: <span className="font-semibold text-foreground">{fmtMonths(gapNow)}</span>{" "}
-                behind bio age
-              </span>
-              <span>{fmtMonths(bioMonthsNow)}</span>
-            </div>
+          <div className="mt-1 font-display text-4xl font-bold tabular-nums text-foreground">
+            {fmtMonths(devMonthsNow)}
           </div>
-
-          <div className={`mt-3 inline-flex items-center gap-1.5 text-xs font-medium ${trendTone}`}>
-            <TrendIcon className="size-3.5" /> {trendLabel}
+          <div className={`mt-3 inline-flex items-center gap-1.5 text-sm font-medium ${trendTone}`}>
+            <TrendIcon className="size-4" /> {trendLabel}
           </div>
+          <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
+            We compare the last 30 days of developmental growth to the prior 30 days, so a single
+            slow week doesn't move the number. The goal isn't a specific age — it's keeping the
+            growth rate consistent month over month.
+          </p>
         </div>
 
-        {/* Bottleneck areas — what's holding the score down */}
+        {/* Where to focus next — positive, action-oriented */}
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Holding the score down
+            Where to focus next
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Lowest-developmental areas — pulling the overall number up means closing gaps here.
+            Closing targets in these areas will lift the overall developmental age the fastest.
           </p>
           <ul className="mt-3 space-y-2">
-            {bottomAreas.map((a) => (
+            {focusAreas.map((a) => (
               <li
                 key={a.code}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-3 py-2"
+                className="rounded-lg border border-border bg-surface/50 px-3 py-2"
               >
-                <div className="min-w-0">
-                  <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2 min-w-0">
                     <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {a.code}
                     </span>
                   </div>
+                  <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-success">
+                    +{a.liftMonths} mo
+                  </span>
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tabular-nums text-foreground">
-                  {fmtMonths(Math.round(a.months))}
-                </span>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Close {a.nextTargets} more targets to unlock
+                </p>
               </li>
             ))}
           </ul>
@@ -873,20 +846,16 @@ function DevAgeCard() {
           <p>
             <span className="font-medium text-foreground">Per area:</span> we walk the VB-MAPP
             levels in order (L1 0–18m → L2 18–30m → L3 30–48m). An area only graduates to the next
-            level once it crosses 80% mastery in the current one. Partial progress higher up doesn't
-            count if the foundation isn't solid.
+            level once it crosses 80% mastery in the current one.
           </p>
           <p>
-            <span className="font-medium text-foreground">Overall:</span> we take the MINIMUM
-            across areas, not the average. A child whose social skills sit at 12 months while
-            everything else is at 30 months is functionally a 12-month-old in social contexts —
-            averaging would mislead parents into thinking he's caught up.
+            <span className="font-medium text-foreground">Overall:</span> the developmental age is
+            the MINIMUM across areas, not the average — one lagging area limits real-world function.
           </p>
           <p>
-            <span className="font-medium text-foreground">The fight:</span> the goal isn't to match
-            same-age peers — it's to keep the gap from widening. Every month of biological age
-            should be matched by at least a month of developmental growth. The trend line above
-            tracks exactly that.
+            <span className="font-medium text-foreground">Trend:</span> we compare developmental
+            growth in the last 30 days to the prior 30 days. If growth slowed, we say so without
+            scoring it — every child progresses at their own pace.
           </p>
         </div>
       </details>
@@ -911,6 +880,8 @@ function DevAgeCard() {
    as the unit; milestone closures are surfaced separately as a coarser
    "stage complete" signal.
    ────────────────────────────────────────────────────────────────────────── */
+
+
 
 // Approx target count per milestone, modelled to match VB-MAPP's variance
 // (1 → 10 supporting targets / sub-skills per milestone, avg ~4.5).

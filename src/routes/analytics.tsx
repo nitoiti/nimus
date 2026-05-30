@@ -733,14 +733,28 @@ const devMonthsNow = perAreaDev.length
   ? Math.round(Math.min(...perAreaDev.map((a) => a.months)))
   : 0;
 
-// Mock: a year ago dev age was ~5 months lower. In production this comes
-// from a recomputation against the snapshot 12 months back.
-const devMonths12moAgo = Math.max(0, devMonthsNow - 5);
-const gapNow = bioMonthsNow - devMonthsNow;
-const gap12moAgo = bioMonthsNow - 12 - devMonths12moAgo;
-const gapChange = gapNow - gap12moAgo; // negative = catching up, positive = falling further behind
+// Mock period snapshots — in production these come from re-computing dev age
+// against historical snapshots. Compared in months of dev-age growth.
+// Convention: narrowing rate = how many dev-months gained vs how many bio-months
+// passed in the same window. >0 means we closed gap, 0 means no improvement.
+const devGain30d = 1.4; // mock: dev age advanced 1.4 mo over last 30 days
+const devGainPrev30d = 0.9; // prior 30 days advanced 0.9 mo
+// 1 bio-month always passes in 30 days, so narrowing = devGain - 1.
+const gapChange30d = devGain30d - 1; // +0.4 mo closed
+const gapChangePrev30d = devGainPrev30d - 1; // -0.1 (no improvement)
 
-const bottomAreas = [...perAreaDev].sort((a, b) => a.months - b.months).slice(0, 4);
+// "Where to focus next" — areas closest to a level threshold whose closure
+// would lift the overall dev age the most. Positive framing: each suggestion
+// = a concrete unlock.
+const focusAreas = [...perAreaDev]
+  .sort((a, b) => a.months - b.months)
+  .slice(0, 3)
+  .map((a, i) => ({
+    ...a,
+    // Mock projected lift if the next few targets close in this area.
+    liftMonths: [3, 2, 1][i] ?? 1,
+    nextTargets: [4, 3, 2][i] ?? 2,
+  }));
 
 function fmtMonths(m: number) {
   const y = Math.floor(m / 12);
@@ -750,100 +764,73 @@ function fmtMonths(m: number) {
 }
 
 function DevAgeCard() {
-  const devPct = bioMonthsNow > 0 ? Math.min(100, (devMonthsNow / bioMonthsNow) * 100) : 0;
-  const catchingUp = gapChange < 0;
-  const holdingPace = Math.abs(gapChange) <= 1;
-  const trendTone = catchingUp
-    ? "text-success"
-    : holdingPace
-      ? "text-foreground"
-      : "text-destructive";
-  const TrendIcon = catchingUp ? TrendingUp : holdingPace ? Minus : TrendingDown;
-  const trendLabel = catchingUp
-    ? `Catching up — gap narrowed ${Math.abs(gapChange)} mo this year`
-    : holdingPace
-      ? `Holding the gap steady (${Math.abs(gapChange)} mo change this year)`
-      : `Gap widened ${gapChange} mo this year`;
+  const narrowed = Math.max(0, gapChange30d); // never show negative
+  const improving = narrowed > 0;
+  const prevNarrowed = Math.max(0, gapChangePrev30d);
+  const faster = narrowed > prevNarrowed + 0.05;
+  const sameSpeed = Math.abs(narrowed - prevNarrowed) <= 0.05;
+  const trendTone = improving ? "text-success" : "text-muted-foreground";
+  const TrendIcon = improving ? TrendingUp : Minus;
+  const trendLabel = !improving
+    ? "No gap improvement in the last 30 days"
+    : faster
+      ? `Narrowing the gap faster — closed ${narrowed.toFixed(1)} mo in last 30 days (was ${prevNarrowed.toFixed(1)})`
+      : sameSpeed
+        ? `Holding pace — closed ${narrowed.toFixed(1)} mo in last 30 days, same as prior 30d`
+        : `Closed ${narrowed.toFixed(1)} mo of gap in last 30 days · prior 30d was ${prevNarrowed.toFixed(1)} mo`;
 
   return (
     <Card
       title="Developmental age"
-      subtitle="A single number for parents — where this child is functionally vs their biological age. Driven by the weakest VB-MAPP area, because one lagging area limits real-world function."
+      subtitle="A single number for parents — how much of the early-childhood skill ladder this child has mastered, expressed in months. Driven by the weakest VB-MAPP area, because one lagging area limits real-world function."
     >
       <div className="grid gap-4 md:grid-cols-3">
         {/* Hero number */}
         <div className="rounded-2xl border border-border bg-surface/40 p-5 md:col-span-2">
-          <div className="flex items-baseline gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Developmental age
-              </div>
-              <div className="mt-1 font-display text-4xl font-bold tabular-nums text-foreground">
-                {fmtMonths(devMonthsNow)}
-              </div>
-            </div>
-            <div className="ml-auto text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Biological age
-              </div>
-              <div className="mt-1 font-display text-2xl font-semibold tabular-nums text-muted-foreground">
-                {fmtMonths(bioMonthsNow)}
-              </div>
-            </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Developmental age
           </div>
-
-          {/* Age progress bar */}
-          <div className="mt-4">
-            <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${devPct}%` }}
-              />
-              <div
-                className="absolute top-0 h-full w-px bg-foreground/60"
-                style={{ left: "100%" }}
-              />
-            </div>
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-              <span>0</span>
-              <span>
-                Gap: <span className="font-semibold text-foreground">{fmtMonths(gapNow)}</span>{" "}
-                behind bio age
-              </span>
-              <span>{fmtMonths(bioMonthsNow)}</span>
-            </div>
+          <div className="mt-1 font-display text-4xl font-bold tabular-nums text-foreground">
+            {fmtMonths(devMonthsNow)}
           </div>
-
-          <div className={`mt-3 inline-flex items-center gap-1.5 text-xs font-medium ${trendTone}`}>
-            <TrendIcon className="size-3.5" /> {trendLabel}
+          <div className={`mt-3 inline-flex items-center gap-1.5 text-sm font-medium ${trendTone}`}>
+            <TrendIcon className="size-4" /> {trendLabel}
           </div>
+          <p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">
+            We compare the last 30 days of developmental growth to the prior 30 days, so a single
+            slow week doesn't move the number. The goal isn't a specific age — it's keeping the
+            growth rate consistent month over month.
+          </p>
         </div>
 
-        {/* Bottleneck areas — what's holding the score down */}
+        {/* Where to focus next — positive, action-oriented */}
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Holding the score down
+            Where to focus next
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Lowest-developmental areas — pulling the overall number up means closing gaps here.
+            Closing targets in these areas will lift the overall developmental age the fastest.
           </p>
           <ul className="mt-3 space-y-2">
-            {bottomAreas.map((a) => (
+            {focusAreas.map((a) => (
               <li
                 key={a.code}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface/50 px-3 py-2"
+                className="rounded-lg border border-border bg-surface/50 px-3 py-2"
               >
-                <div className="min-w-0">
-                  <div className="flex items-baseline gap-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2 min-w-0">
                     <span className="truncate text-sm font-medium text-foreground">{a.name}</span>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {a.code}
                     </span>
                   </div>
+                  <span className="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-bold tabular-nums text-success">
+                    +{a.liftMonths} mo
+                  </span>
                 </div>
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold tabular-nums text-foreground">
-                  {fmtMonths(Math.round(a.months))}
-                </span>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  Close {a.nextTargets} more targets to unlock
+                </p>
               </li>
             ))}
           </ul>
@@ -859,20 +846,16 @@ function DevAgeCard() {
           <p>
             <span className="font-medium text-foreground">Per area:</span> we walk the VB-MAPP
             levels in order (L1 0–18m → L2 18–30m → L3 30–48m). An area only graduates to the next
-            level once it crosses 80% mastery in the current one. Partial progress higher up doesn't
-            count if the foundation isn't solid.
+            level once it crosses 80% mastery in the current one.
           </p>
           <p>
-            <span className="font-medium text-foreground">Overall:</span> we take the MINIMUM
-            across areas, not the average. A child whose social skills sit at 12 months while
-            everything else is at 30 months is functionally a 12-month-old in social contexts —
-            averaging would mislead parents into thinking he's caught up.
+            <span className="font-medium text-foreground">Overall:</span> the developmental age is
+            the MINIMUM across areas, not the average — one lagging area limits real-world function.
           </p>
           <p>
-            <span className="font-medium text-foreground">The fight:</span> the goal isn't to match
-            same-age peers — it's to keep the gap from widening. Every month of biological age
-            should be matched by at least a month of developmental growth. The trend line above
-            tracks exactly that.
+            <span className="font-medium text-foreground">Trend:</span> we compare developmental
+            growth in the last 30 days to the prior 30 days. If growth slowed, we say so without
+            scoring it — every child progresses at their own pace.
           </p>
         </div>
       </details>
@@ -897,6 +880,8 @@ function DevAgeCard() {
    as the unit; milestone closures are surfaced separately as a coarser
    "stage complete" signal.
    ────────────────────────────────────────────────────────────────────────── */
+
+
 
 // Approx target count per milestone, modelled to match VB-MAPP's variance
 // (1 → 10 supporting targets / sub-skills per milestone, avg ~4.5).
@@ -1027,9 +1012,15 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
       pacing: null,
     };
   }
-  // Active level — use the full target velocity, since that's where work lands.
-  const weeklyTargets = targetsPerWeek;
-  if (weeklyTargets < 0.5) {
+  // Active level — try recent (4w) pace first; fall back to lifetime pace
+  // so we can always show a date instead of a vague "building pace" label.
+  const lifetimeTargets = sumDelta(liveWeeklyTargets);
+  const lifetimeWeeks = Math.max(1, liveWeeklyTargets.length);
+  const lifetimePerWeek = lifetimeTargets / lifetimeWeeks;
+  const usingRecent = targetsPerWeek >= 0.5;
+  const weeklyTargets = usingRecent ? targetsPerWeek : lifetimePerWeek;
+  // If even lifetime velocity is 0, we genuinely have no signal yet.
+  if (weeklyTargets < 0.1) {
     return {
       level: lv.level,
       range: lv.range,
@@ -1037,7 +1028,7 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
       total: lv.total,
       pct,
       remaining: remainingMilestones,
-      weeklyTargets,
+      weeklyTargets: 0,
       isActive: true,
       isComplete: false,
       etaLabel: null,
@@ -1048,8 +1039,11 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
   const weeks = remainingTargets / weeklyTargets;
   const ms = Date.now() + weeks * 7 * 24 * 60 * 60 * 1000;
   const etaDate = new Date(ms).toISOString().slice(0, 10);
-  const pacing: LevelForecast["pacing"] =
-    targetsDeltaPct !== null && targetsDeltaPct < -20 ? "slowing" : "on-track";
+  const pacing: LevelForecast["pacing"] = !usingRecent
+    ? "building"
+    : targetsDeltaPct !== null && targetsDeltaPct < -20
+      ? "slowing"
+      : "on-track";
   const etaLabel =
     weeks < 1.5
       ? `~${Math.max(1, Math.round(weeks * 7))} days`
@@ -1166,87 +1160,26 @@ function SkillMapCard() {
         </div>
       </div>
 
-      {/* Combined milestones + targets trajectory (live era only) */}
+      {/* Two separate trajectories — programs/milestones close in steps; targets advance continuously */}
       {liveTrajectory.length > 1 && (
-        <div className="mt-5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Skill-map trajectory — targets &amp; milestones
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Targets advance continuously; milestones step up when a whole sub-skill chain closes.
-            </p>
-          </div>
-          <div className="h-48 w-full">
-            <ResponsiveContainer>
-              <LineChart
-                data={liveTrajectory}
-                margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
-              >
-                <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                  tickFormatter={(v) =>
-                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                  }
-                  minTickGap={40}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="targets"
-                  tick={{ fontSize: 10, fill: "oklch(0.52 0.21 280)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={32}
-                />
-                <YAxis
-                  yAxisId="milestones"
-                  orientation="right"
-                  tick={{ fontSize: 10, fill: "oklch(0.62 0.13 200)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={28}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid oklch(0.9 0.01 250)",
-                    fontSize: 12,
-                  }}
-                  labelFormatter={(v) =>
-                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                  }
-                />
-                <Line
-                  yAxisId="targets"
-                  type="monotone"
-                  dataKey="targets"
-                  stroke="oklch(0.52 0.21 280)"
-                  strokeWidth={2.5}
-                  dot={false}
-                  name="Targets (cum.)"
-                />
-                <Line
-                  yAxisId="milestones"
-                  type="stepAfter"
-                  dataKey="milestones"
-                  stroke="oklch(0.62 0.13 200)"
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="Milestones (cum.)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
-            <Legend swatch="bg-primary" label="Targets (cumulative)" />
-            <Legend swatch="bg-info" dashed label="Milestones (cumulative)" />
-          </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <TrajectoryMini
+            label="Cumulative targets mastered"
+            help="Each closed sub-skill bumps this line up — your day-to-day signal."
+            dataKey="targets"
+            color="oklch(0.52 0.21 280)"
+            type="monotone"
+          />
+          <TrajectoryMini
+            label="Cumulative milestones mastered"
+            help="Steps up when a full milestone (a group of related targets) signs off."
+            dataKey="milestones"
+            color="oklch(0.62 0.13 200)"
+            type="stepAfter"
+          />
         </div>
       )}
+
 
       {/* Forecast per level */}
       <div className="mt-5">
@@ -1291,6 +1224,67 @@ function SkillMapCard() {
     </Card>
   );
 }
+
+function TrajectoryMini({
+  label,
+  help,
+  dataKey,
+  color,
+  type,
+}: {
+  label: string;
+  help: string;
+  dataKey: "targets" | "milestones";
+  color: string;
+  type: "monotone" | "stepAfter";
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface/40 p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+        <p className="text-[10px] text-muted-foreground">{help}</p>
+      </div>
+      <div className="h-40 w-full">
+        <ResponsiveContainer>
+          <LineChart data={liveTrajectory} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tickFormatter={(v) =>
+                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+              }
+              minTickGap={40}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid oklch(0.9 0.01 250)",
+                fontSize: 12,
+              }}
+              labelFormatter={(v) =>
+                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+              }
+            />
+            <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+
 
 function LevelForecastCard({ f }: { f: LevelForecast }) {
   const accentClass = f.isComplete
@@ -1349,6 +1343,7 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
                 {f.etaLabel} away · at {f.weeklyTargets.toFixed(1)} targets/wk
+                {f.pacing === "building" && " (lifetime pace — recent 4w is light)"}
               </div>
               {f.pacing === "slowing" && (
                 <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
@@ -1359,27 +1354,27 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
           ) : (
             <>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Forecast
+                Projected to complete
               </div>
               <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
-                Building pace
+                Needs first closures
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Need a few more target closures here before a date is meaningful.
+                Close a few targets in this level to generate a date.
               </div>
             </>
           )
         ) : (
           <>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
+              Sequenced
             </div>
             <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
-              Upcoming
+              After Level {vbMappLevels[activeLevelIdx]?.level ?? 1} completes
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} remaining · scheduled after the
-              current level closes.
+              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} here · forecast appears once
+              this becomes the current focus.
             </div>
           </>
         )}

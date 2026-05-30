@@ -347,31 +347,29 @@ function Analytics() {
 
 function ProgressTrajectoriesCard() {
   return (
-    <Card
-      title="Progress trajectories"
-      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off. Dashed line is the finish — every closed sub-skill pulls us closer."
-    >
-      <div className="grid gap-4 md:grid-cols-2">
-        <TrajectoryMini
-          label="Cumulative targets mastered"
-          help="Each closed sub-skill bumps this line — day-to-day signal."
-          dataKey="targets"
-          color="oklch(0.52 0.21 280)"
-          type="monotone"
-          goal={TARGETS_GOAL}
-          goalLabel={`Goal · ${TARGETS_GOAL} targets`}
-        />
-        <TrajectoryMini
-          label="Cumulative milestones mastered"
-          help="Steps up when a full milestone signs off."
-          dataKey="milestones"
-          color="oklch(0.62 0.13 200)"
-          type="stepAfter"
-          goal={MILESTONES_GOAL}
-          goalLabel={`Goal · ${MILESTONES_GOAL} milestones`}
-        />
-      </div>
-    </Card>
+    <div className="space-y-6">
+      <ClosureTimelineCard
+        title={`Targets in Level ${ACTIVE_LEVEL.level} — ${ACTIVE_LEVEL.range}`}
+        subtitle="Sub-skills closed within the current developmental level. Click a dot to see what was mastered that week."
+        color="oklch(0.52 0.21 280)"
+        closed={ACTIVE_LEVEL_TARGETS_CLOSED}
+        goal={ACTIVE_LEVEL_TARGETS_GOAL}
+        goalLabel={`Level ${ACTIVE_LEVEL.level} goal · ${ACTIVE_LEVEL_TARGETS_GOAL} targets`}
+        series={activeLevelTargetSeries}
+        closures={activeLevelTargetClosures}
+        groupByWeek
+      />
+      <ClosureTimelineCard
+        title={`Milestones in Level ${ACTIVE_LEVEL.level} — ${ACTIVE_LEVEL.range}`}
+        subtitle="Whole milestones signed off. Each dot is one milestone — click to see exactly which."
+        color="oklch(0.62 0.13 200)"
+        closed={ACTIVE_LEVEL.mastered}
+        goal={ACTIVE_LEVEL.total}
+        goalLabel={`Level ${ACTIVE_LEVEL.level} goal · ${ACTIVE_LEVEL.total} milestones`}
+        series={activeLevelMilestoneSeries}
+        closures={activeLevelMilestoneClosures}
+      />
+    </div>
   );
 }
 

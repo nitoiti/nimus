@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AreaChart,
   Area,
@@ -347,31 +347,29 @@ function Analytics() {
 
 function ProgressTrajectoriesCard() {
   return (
-    <Card
-      title="Progress trajectories"
-      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off. Dashed line is the finish — every closed sub-skill pulls us closer."
-    >
-      <div className="grid gap-4 md:grid-cols-2">
-        <TrajectoryMini
-          label="Cumulative targets mastered"
-          help="Each closed sub-skill bumps this line — day-to-day signal."
-          dataKey="targets"
-          color="oklch(0.52 0.21 280)"
-          type="monotone"
-          goal={TARGETS_GOAL}
-          goalLabel={`Goal · ${TARGETS_GOAL} targets`}
-        />
-        <TrajectoryMini
-          label="Cumulative milestones mastered"
-          help="Steps up when a full milestone signs off."
-          dataKey="milestones"
-          color="oklch(0.62 0.13 200)"
-          type="stepAfter"
-          goal={MILESTONES_GOAL}
-          goalLabel={`Goal · ${MILESTONES_GOAL} milestones`}
-        />
-      </div>
-    </Card>
+    <div className="space-y-6">
+      <ClosureTimelineCard
+        title={`Targets in Level ${ACTIVE_LEVEL.level} — ${ACTIVE_LEVEL.range}`}
+        subtitle="Sub-skills closed within the current developmental level. Click a dot to see what was mastered that week."
+        color="oklch(0.52 0.21 280)"
+        closed={ACTIVE_LEVEL_TARGETS_CLOSED}
+        goal={ACTIVE_LEVEL_TARGETS_GOAL}
+        goalLabel={`Level ${ACTIVE_LEVEL.level} goal · ${ACTIVE_LEVEL_TARGETS_GOAL} targets`}
+        series={activeLevelTargetSeries}
+        closures={activeLevelTargetClosures}
+        groupByWeek
+      />
+      <ClosureTimelineCard
+        title={`Milestones in Level ${ACTIVE_LEVEL.level} — ${ACTIVE_LEVEL.range}`}
+        subtitle="Whole milestones signed off. Each dot is one milestone — click to see exactly which."
+        color="oklch(0.62 0.13 200)"
+        closed={ACTIVE_LEVEL.mastered}
+        goal={ACTIVE_LEVEL.total}
+        goalLabel={`Level ${ACTIVE_LEVEL.level} goal · ${ACTIVE_LEVEL.total} milestones`}
+        series={activeLevelMilestoneSeries}
+        closures={activeLevelMilestoneClosures}
+      />
+    </div>
   );
 }
 
@@ -524,174 +522,33 @@ function DataEraBanner() {
 }
 
 function ProgramsClosedCard() {
-  const chartStart = programClosureSeries[0]?.date;
-  const chartEnd = programClosureSeries[programClosureSeries.length - 1]?.date;
-  const startMs = chartStart ? new Date(chartStart).getTime() : 0;
-  const endMs = chartEnd ? new Date(chartEnd).getTime() : 1;
-  const span = Math.max(1, endMs - startMs);
-
-  const totalClosed = programClosures.length;
-  const withData = _trialCount;
-  const noData = _noTrialCount;
-  const pct = Math.round((totalClosed / PROGRAMS_GOAL) * 100);
-  const remaining = Math.max(0, PROGRAMS_GOAL - totalClosed);
-
   return (
-    <Card
+    <ClosureTimelineCard
       title="Programs closed"
-      subtitle="A program is a unit of teaching work (e.g. 'Sits nicely 1 min'). Some have per-trial records, others are start/end-only — the strip below shows which is which."
-    >
-      <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
-        <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
-          {totalClosed}{" "}
-          <span className="text-sm font-normal text-muted-foreground">/ {PROGRAMS_GOAL} programs</span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {pct}% there · {remaining} to go
-        </p>
-        <p className="ml-auto text-[11px] text-muted-foreground">
-          <span className="font-medium text-foreground">{withData}</span> with trial data ·{" "}
-          <span className="font-medium text-foreground">{noData}</span> start/end only
-        </p>
-      </div>
-      <div className="h-64 w-full">
-        <ResponsiveContainer>
-          <AreaChart
-            data={programClosureSeries}
-            margin={{ top: 12, right: 12, left: -10, bottom: 0 }}
-          >
-            <defs>
-              <linearGradient id="programsGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="programsTrialGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
-              tickFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", year: "2-digit" })
-              }
-              minTickGap={40}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
-              axisLine={false}
-              tickLine={false}
-              width={30}
-              domain={[0, Math.ceil(PROGRAMS_GOAL * 1.05)]}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid oklch(0.9 0.01 250)",
-                fontSize: 12,
-                boxShadow: "0 8px 24px -12px rgba(0,0,0,.15)",
-              }}
-              labelFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })
-              }
-              formatter={(v: number, name) => [
-                v,
-                name === "closed" ? "All programs (cum.)" : "With trial data (cum.)",
-              ]}
-            />
-            <ReferenceLine
-              y={PROGRAMS_GOAL}
-              stroke="oklch(0.55 0.02 260)"
-              strokeDasharray="4 4"
-              strokeWidth={1.5}
-              label={{
-                value: `Goal · ${PROGRAMS_GOAL} programs`,
-                position: "insideTopRight",
-                fill: "oklch(0.42 0.02 260)",
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            />
-            <Area
-              type="monotone"
-              dataKey="closed"
-              stroke="oklch(0.52 0.21 280)"
-              strokeWidth={2.5}
-              fill="url(#programsGrad)"
-            />
-            <Area
-              type="monotone"
-              dataKey="withTrialData"
-              stroke="oklch(0.62 0.13 200)"
-              strokeWidth={2}
-              strokeDasharray="3 3"
-              fill="url(#programsTrialGrad)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Per-program closure strip — one dot per program, aligned to its
-          closure date, colored by whether trial data exists. Lines up
-          visually with the Independence trend chart below (which can only
-          plot weeks where trial data is present). */}
-      <div className="mt-2">
-        <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          <span>Each program closure</span>
-          <span className="font-normal normal-case tracking-normal">
-            hover for date · color = trial data
+      subtitle="A program is a unit of teaching work (e.g. 'Sits nicely 1 min'). Click a dot to see which programs closed on that date."
+      color="oklch(0.52 0.21 280)"
+      closed={programClosures.length}
+      goal={null}
+      series={programClosureSeries.map((p) => ({ date: p.date, value: p.value }))}
+      closures={programClosures.map((p) => ({
+        id: p.id,
+        date: p.closedAt,
+        name: p.name,
+        meta: p.hasTrialData ? "with trial data" : "start/end only",
+      }))}
+      footer={
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2 rounded-full" style={{ backgroundColor: "oklch(0.62 0.13 200)" }} />
+            <span className="font-medium text-foreground">{_trialCount}</span> with trial data
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-2 rounded-full" style={{ backgroundColor: "oklch(0.78 0.01 260)" }} />
+            <span className="font-medium text-foreground">{_noTrialCount}</span> start/end only
           </span>
         </div>
-        <div className="relative h-5 rounded-md border border-border bg-surface/40">
-          {programClosures.map((p) => {
-            const x = ((new Date(p.closedAt).getTime() - startMs) / span) * 100;
-            return (
-              <div
-                key={p.id}
-                title={`${new Date(p.closedAt).toLocaleDateString("en", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })} · ${p.hasTrialData ? "with trial data" : "start/end only"}`}
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${Math.max(0, Math.min(100, x))}%` }}
-              >
-                <div
-                  className="size-2 rounded-full ring-1 ring-background"
-                  style={{
-                    backgroundColor: p.hasTrialData
-                      ? "oklch(0.62 0.13 200)"
-                      : "oklch(0.78 0.01 260)",
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-        <Legend swatch="bg-primary" label="All programs closed" />
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: "oklch(0.62 0.13 200)" }}
-          />
-          With trial data (feeds Independence trend)
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className="inline-block size-2 rounded-full"
-            style={{ backgroundColor: "oklch(0.78 0.01 260)" }}
-          />
-          Start/end only (no per-trial record)
-        </span>
-      </div>
-    </Card>
+      }
+    />
   );
 }
 
@@ -1117,35 +974,91 @@ function cadenceDays(weeks: { delta: number }[]) {
 const cadenceNow = cadenceDays(liveWeeklyTargets.slice(-8));
 const cadencePrev = cadenceDays(liveWeeklyTargets.slice(-16, -8));
 
-// Cumulative trajectories — used by the combined milestones+targets chart.
-const liveTrajectory = (() => {
-  let mCum = masteryTrajectory.find((x) => x.era === "retro")?.mastered ?? 0;
-  let tCum = mCum * 4; // assume retro targets ~ 4× milestones (estimate, hatched on chart)
-  return liveWeekly.map((w, i) => {
-    mCum += w.delta;
-    tCum += liveWeeklyTargets[i].delta;
-    return { date: w.date, milestones: mCum, targets: tCum };
-  });
+
+// ── Per-level closure simulation (named, dated) ──────────────────────────
+// For the active VB-MAPP level we surface every closed milestone + target as
+// a clickable dot on a timeline. Names are seeded but stable.
+const _activeLevelIdxForData = vbMappLevels.findIndex((l) => l.mastered < l.total);
+const ACTIVE_LEVEL = vbMappLevels[_activeLevelIdxForData >= 0 ? _activeLevelIdxForData : 0];
+const TARGETS_PER_LEVEL_MILESTONE = 7; // avg sub-skills per milestone
+const ACTIVE_LEVEL_TARGETS_GOAL = ACTIVE_LEVEL.total * TARGETS_PER_LEVEL_MILESTONE;
+const ACTIVE_LEVEL_TARGETS_CLOSED = Math.max(
+  0,
+  Math.round(ACTIVE_LEVEL_TARGETS_GOAL * (ACTIVE_LEVEL.mastered / ACTIVE_LEVEL.total)) - 3,
+);
+
+const _AREA_POOL_FOR_ACTIVE_LEVEL = SKILL_AREAS
+  .filter((a) => a.levels[ACTIVE_LEVEL.level - 1])
+  .map((a) => a.name);
+
+type Closure = { id: string; date: string; name: string; meta?: string };
+
+const _DATA_START = "2024-02-01";
+const _DATA_END = new Date().toISOString().slice(0, 10);
+
+const activeLevelMilestoneClosures: Closure[] = (() => {
+  const start = new Date(_DATA_START).getTime();
+  const end = new Date(_DATA_END).getTime();
+  const span = Math.max(1, end - start);
+  return Array.from({ length: ACTIVE_LEVEL.mastered }, (_, i) => {
+    const r1 = seeded(i * 31 + 100);
+    const r2 = seeded(i * 47 + 113);
+    const d = new Date(start + Math.floor(r1 * span));
+    const area = _AREA_POOL_FOR_ACTIVE_LEVEL[Math.floor(r2 * _AREA_POOL_FOR_ACTIVE_LEVEL.length)] ?? "Skill";
+    return {
+      id: `ms-${i}`,
+      date: d.toISOString().slice(0, 10),
+      name: `${area} · L${ACTIVE_LEVEL.level}-${(i % 15) + 1}`,
+    };
+  }).sort((a, b) => a.date.localeCompare(b.date));
 })();
 
-// Goal lines for Progress trajectories — total countable targets / milestones
-// across all 3 VB-MAPP levels for this child. The chart shows how close we are
-// to the finish line, not just how much we've done.
-const _lastTraj = liveTrajectory[liveTrajectory.length - 1] ?? { targets: 0, milestones: 0 };
-// Assume the child is currently ~78% / ~82% of the way through the full skill
-// map (matches the screenshots and keeps the goal line believable).
-const TARGETS_GOAL = Math.max(_lastTraj.targets + 10, Math.round(_lastTraj.targets / 0.78));
-const MILESTONES_GOAL = Math.max(_lastTraj.milestones + 5, Math.round(_lastTraj.milestones / 0.82));
+const activeLevelTargetClosures: Closure[] = (() => {
+  const start = new Date(_DATA_START).getTime();
+  const list: Closure[] = [];
+  activeLevelMilestoneClosures.forEach((m, mi) => {
+    const n = 5 + Math.round(seeded(mi * 23 + 5) * 4);
+    const mTime = new Date(m.date).getTime();
+    for (let k = 0; k < n; k++) {
+      const back = Math.floor(seeded(mi * 37 + k * 11) * 30 * 24 * 3600 * 1000);
+      const t = Math.max(start, mTime - back);
+      list.push({
+        id: `t-${mi}-${k}`,
+        date: new Date(t).toISOString().slice(0, 10),
+        name: `${m.name} · sub-skill ${k + 1}`,
+      });
+    }
+  });
+  return list.slice(0, ACTIVE_LEVEL_TARGETS_CLOSED).sort((a, b) => a.date.localeCompare(b.date));
+})();
 
-// ── Programs closed over time (separate from targets/milestones). Programs
-// are units of teaching work (e.g. "Sits nicely 1 min"). Some have per-trial
-// records (independence% can be computed), some are retrospective imports
-// with only start/end dates. The chart shows both, and a strip beneath marks
-// each program closure colored by whether trial data exists.
-type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean };
+function _buildCumSeries(closures: Closure[]): { date: string; value: number }[] {
+  return masteryTrajectory.map((w) => ({
+    date: w.date,
+    value: closures.filter((c) => c.date <= w.date).length,
+  }));
+}
+const activeLevelMilestoneSeries = _buildCumSeries(activeLevelMilestoneClosures);
+const activeLevelTargetSeries = _buildCumSeries(activeLevelTargetClosures);
+
+// ── Programs: real catalog of seeded names; no fabricated goal. ──────────
+type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean; name: string };
+
+const _PROGRAM_NAMES = [
+  "Sits nicely 1 min", "Hand washing", "Tact - vehicles", "Mand - cookie",
+  "Imitates clap", "Matches colors", "Echoic /b/", "Listener - body parts",
+  "Plays solo 5min", "Greets peers", "Names letters A-G", "Sorts by size",
+  "Requests break", "Independent toileting", "Counts 1-5", "Plays catch",
+  "Removes coat", "Identifies emotions", "Follows 2-step", "Receptive shapes",
+  "Tact - animals", "Mand - juice", "Imitates fine motor", "Matches shapes",
+  "Echoic /m/", "Listener - actions", "Parallel play", "Eye contact 3s",
+  "Sorts by color", "Toileting routine", "Counts 6-10", "Throws ball",
+  "Puts on shoes", "Identifies family", "Follows 3-step", "Receptive colors",
+  "Tact - food", "Mand - help",
+];
 
 const programClosures: ProgramClosure[] = (() => {
-  const start = new Date("2024-02-01").getTime();
+  const start = new Date(_DATA_START).getTime();
   const end = Date.now();
   const totalDays = Math.max(1, (end - start) / (24 * 3600 * 1000));
   const count = 38;
@@ -1155,28 +1068,25 @@ const programClosures: ProgramClosure[] = (() => {
     const d = new Date(start + dayOffset * 24 * 3600 * 1000);
     const date = d.toISOString().slice(0, 10);
     const isLive = date >= ERA_SPLIT;
-    // Retro era is mostly start/end-only imports (few have trial data).
-    // Live era is mostly trial-tracked, but some programs (e.g. duration
-    // criteria like "sits nicely") still have no trial data.
     const hasTrialData = isLive
       ? seeded(i * 53 + 11) > 0.28
       : seeded(i * 53 + 11) > 0.9;
-    return { id: `prog-${i}`, closedAt: date, hasTrialData };
+    return {
+      id: `prog-${i}`,
+      closedAt: date,
+      hasTrialData,
+      name: _PROGRAM_NAMES[i % _PROGRAM_NAMES.length],
+    };
   }).sort((a, b) => a.closedAt.localeCompare(b.closedAt));
 })();
 
-const PROGRAMS_GOAL = Math.max(60, programClosures.length + 18);
-
-// Weekly cumulative program closures (split by trial-data availability).
+// Weekly cumulative program closures.
 const programClosureSeries = (() => {
-  return masteryTrajectory.map((w) => {
-    const upTo = programClosures.filter((p) => p.closedAt <= w.date);
-    return {
-      date: w.date,
-      closed: upTo.length,
-      withTrialData: upTo.filter((p) => p.hasTrialData).length,
-    };
-  });
+  return masteryTrajectory.map((w) => ({
+    date: w.date,
+    value: programClosures.filter((p) => p.closedAt <= w.date).length,
+    withTrialData: programClosures.filter((p) => p.closedAt <= w.date && p.hasTrialData).length,
+  }));
 })();
 
 const _trialCount = programClosures.filter((p) => p.hasTrialData).length;
@@ -1429,62 +1339,109 @@ function SkillMapCard() {
   );
 }
 
-function TrajectoryMini({
-  label,
-  help,
-  dataKey,
+function ClosureTimelineCard({
+  title,
+  subtitle,
   color,
-  type,
+  closed,
   goal,
   goalLabel,
+  series,
+  closures,
+  groupByWeek = false,
+  footer,
 }: {
-  label: string;
-  help: string;
-  dataKey: "targets" | "milestones";
+  title: string;
+  subtitle: string;
   color: string;
-  type: "monotone" | "stepAfter";
-  goal: number;
-  goalLabel: string;
+  closed: number;
+  goal?: number | null;
+  goalLabel?: string;
+  series: { date: string; value: number }[];
+  closures: Closure[];
+  groupByWeek?: boolean;
+  footer?: ReactNode;
 }) {
-  const last = liveTrajectory[liveTrajectory.length - 1]?.[dataKey] ?? 0;
-  const pct = Math.min(100, Math.round((last / goal) * 100));
-  const remaining = Math.max(0, goal - last);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const startMs = series[0] ? new Date(series[0].date).getTime() : 0;
+  const endMs = series[series.length - 1]
+    ? new Date(series[series.length - 1].date).getTime()
+    : 1;
+  const span = Math.max(1, endMs - startMs);
+  const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+  const buckets = (() => {
+    const map = new Map<string, Closure[]>();
+    closures.forEach((c) => {
+      let key = c.date;
+      if (groupByWeek) {
+        const t = new Date(c.date).getTime();
+        key = String(Math.floor((t - startMs) / WEEK_MS));
+      }
+      const arr = map.get(key) ?? [];
+      arr.push(c);
+      map.set(key, arr);
+    });
+    return Array.from(map.entries()).map(([key, items]) => {
+      const dates = items.map((c) => new Date(c.date).getTime()).sort((a, b) => a - b);
+      const midMs = dates[Math.floor(dates.length / 2)] ?? startMs;
+      return { key, items, midMs, x: ((midMs - startMs) / span) * 100 };
+    });
+  })();
+
+  const selected = buckets.find((b) => b.key === selectedKey);
+  const yMax = goal
+    ? Math.ceil(goal * 1.05)
+    : Math.max(...series.map((s) => s.value), 1) * 1.1;
+  const pct = goal != null ? Math.min(100, Math.round((closed / goal) * 100)) : null;
+  const remaining = goal != null ? Math.max(0, goal - closed) : null;
+  const gradId = `clos-grad-${title.replace(/[^a-z0-9]/gi, "")}`;
+
   return (
-    <div className="rounded-xl border border-border bg-surface/40 p-3">
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
+    <Card title={title} subtitle={subtitle}>
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
+          {closed}
+          {goal != null && (
+            <span className="text-sm font-normal text-muted-foreground"> / {goal}</span>
+          )}
         </p>
-        <p className="text-[10px] text-muted-foreground">{help}</p>
+        {pct != null && (
+          <p className="text-xs text-muted-foreground">
+            {pct}% there · {remaining} to go
+          </p>
+        )}
+        <p className="ml-auto text-[11px] text-muted-foreground">
+          {closures.length} closures tracked
+        </p>
       </div>
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <p className="font-display text-lg font-semibold tabular-nums text-foreground">
-          {last} <span className="text-xs font-normal text-muted-foreground">/ {goal}</span>
-        </p>
-        <p className="text-[10px] text-muted-foreground">
-          {pct}% there · {remaining} to go
-        </p>
-      </div>
-      <div className="h-36 w-full">
+
+      <div className="h-52 w-full">
         <ResponsiveContainer>
-          <LineChart data={liveTrajectory} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+          <AreaChart data={series} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
               tickFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                new Date(v).toLocaleDateString("en", { month: "short", year: "2-digit" })
               }
               minTickGap={40}
               axisLine={false}
               tickLine={false}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
               axisLine={false}
               tickLine={false}
-              width={32}
-              domain={[0, Math.ceil(goal * 1.05)]}
+              width={30}
+              domain={[0, yMax]}
             />
             <Tooltip
               contentStyle={{
@@ -1493,27 +1450,123 @@ function TrajectoryMini({
                 fontSize: 12,
               }}
               labelFormatter={(v) =>
-                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+                new Date(v).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })
               }
+              formatter={(v: number) => [v, "Closed"]}
             />
-            <ReferenceLine
-              y={goal}
-              stroke="oklch(0.65 0.02 260)"
-              strokeDasharray="4 4"
-              strokeWidth={1.5}
-              label={{
-                value: goalLabel,
-                position: "insideTopRight",
-                fill: "oklch(0.45 0.02 260)",
-                fontSize: 10,
-                fontWeight: 600,
-              }}
+            {goal != null && (
+              <ReferenceLine
+                y={goal}
+                stroke="oklch(0.55 0.02 260)"
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                label={{
+                  value: goalLabel ?? `Goal · ${goal}`,
+                  position: "insideTopRight",
+                  fill: "oklch(0.42 0.02 260)",
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              />
+            )}
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke={color}
+              strokeWidth={2.5}
+              fill={`url(#${gradId})`}
             />
-            <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-    </div>
+
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span>Each closure</span>
+          <span className="font-normal normal-case tracking-normal">
+            click a dot to see what closed
+          </span>
+        </div>
+        <div className="relative h-7 rounded-md border border-border bg-surface/40">
+          {buckets.map((b) => {
+            const isSel = b.key === selectedKey;
+            const size = Math.min(16, 6 + Math.log2(b.items.length + 1) * 2.5);
+            return (
+              <button
+                key={b.key}
+                type="button"
+                onClick={() => setSelectedKey(isSel ? null : b.key)}
+                title={`${new Date(b.midMs).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })} · ${b.items.length} closure${b.items.length > 1 ? "s" : ""}`}
+                className="absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full ring-1 ring-background transition hover:scale-125"
+                style={{
+                  left: `${Math.max(0, Math.min(100, b.x))}%`,
+                  width: size,
+                  height: size,
+                  backgroundColor: color,
+                  boxShadow: isSel ? `0 0 0 2px ${color}` : undefined,
+                }}
+              >
+                {b.items.length > 1 && size >= 12 ? (
+                  <span className="text-[8px] font-bold text-white">{b.items.length}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        {selected && (
+          <div className="mt-2 rounded-lg border border-border bg-card p-3">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <p className="text-xs font-semibold text-foreground">
+                Closed{" "}
+                {groupByWeek ? "in week of " : "on "}
+                {new Date(selected.midMs).toLocaleDateString("en", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}{" "}
+                <span className="font-normal text-muted-foreground">
+                  · {selected.items.length} item{selected.items.length > 1 ? "s" : ""}
+                </span>
+              </p>
+              <button
+                onClick={() => setSelectedKey(null)}
+                className="text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                close
+              </button>
+            </div>
+            <ul className="max-h-40 space-y-1 overflow-y-auto text-xs text-foreground">
+              {selected.items.slice(0, 50).map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3">
+                  <span className="truncate">
+                    {c.name}
+                    {c.meta && (
+                      <span className="ml-2 text-[10px] text-muted-foreground">· {c.meta}</span>
+                    )}
+                  </span>
+                  <span className="text-[10px] tabular-nums text-muted-foreground">{c.date}</span>
+                </li>
+              ))}
+            </ul>
+            {selected.items.length > 50 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                + {selected.items.length - 50} more
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {footer}
+    </Card>
   );
 }
 

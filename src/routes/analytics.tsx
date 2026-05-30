@@ -1160,87 +1160,26 @@ function SkillMapCard() {
         </div>
       </div>
 
-      {/* Combined milestones + targets trajectory (live era only) */}
+      {/* Two separate trajectories — programs/milestones close in steps; targets advance continuously */}
       {liveTrajectory.length > 1 && (
-        <div className="mt-5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Skill-map trajectory — targets &amp; milestones
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              Targets advance continuously; milestones step up when a whole sub-skill chain closes.
-            </p>
-          </div>
-          <div className="h-48 w-full">
-            <ResponsiveContainer>
-              <LineChart
-                data={liveTrajectory}
-                margin={{ top: 4, right: 8, left: -12, bottom: 0 }}
-              >
-                <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
-                  tickFormatter={(v) =>
-                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                  }
-                  minTickGap={40}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  yAxisId="targets"
-                  tick={{ fontSize: 10, fill: "oklch(0.52 0.21 280)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={32}
-                />
-                <YAxis
-                  yAxisId="milestones"
-                  orientation="right"
-                  tick={{ fontSize: 10, fill: "oklch(0.62 0.13 200)" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={28}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid oklch(0.9 0.01 250)",
-                    fontSize: 12,
-                  }}
-                  labelFormatter={(v) =>
-                    new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
-                  }
-                />
-                <Line
-                  yAxisId="targets"
-                  type="monotone"
-                  dataKey="targets"
-                  stroke="oklch(0.52 0.21 280)"
-                  strokeWidth={2.5}
-                  dot={false}
-                  name="Targets (cum.)"
-                />
-                <Line
-                  yAxisId="milestones"
-                  type="stepAfter"
-                  dataKey="milestones"
-                  stroke="oklch(0.62 0.13 200)"
-                  strokeWidth={2}
-                  strokeDasharray="4 4"
-                  dot={false}
-                  name="Milestones (cum.)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
-            <Legend swatch="bg-primary" label="Targets (cumulative)" />
-            <Legend swatch="bg-info" dashed label="Milestones (cumulative)" />
-          </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <TrajectoryMini
+            label="Cumulative targets mastered"
+            help="Each closed sub-skill bumps this line up — your day-to-day signal."
+            dataKey="targets"
+            color="oklch(0.52 0.21 280)"
+            type="monotone"
+          />
+          <TrajectoryMini
+            label="Cumulative milestones mastered"
+            help="Steps up when a full milestone (a group of related targets) signs off."
+            dataKey="milestones"
+            color="oklch(0.62 0.13 200)"
+            type="stepAfter"
+          />
         </div>
       )}
+
 
       {/* Forecast per level */}
       <div className="mt-5">

@@ -1077,21 +1077,13 @@ function SkillMapCard() {
 }
 
 function LevelForecastCard({ f }: { f: LevelForecast }) {
-  const isComplete = f.status === "complete";
-  const isStalled = f.status === "stalled";
-  const isSlowing = f.status === "slowing";
-  const accentClass = isComplete
+  const accentClass = f.isComplete
     ? "border-success/40"
-    : isStalled
-      ? "border-destructive/40"
-      : isSlowing
+    : f.isActive
+      ? f.pacing === "slowing"
         ? "border-warning/40"
-        : "border-border";
-  const etaTone = isComplete
-    ? "text-success"
-    : isStalled
-      ? "text-destructive"
-      : "text-foreground";
+        : "border-primary/40"
+      : "border-border";
   return (
     <div className={`rounded-xl border ${accentClass} bg-card p-4`}>
       <div className="flex items-baseline justify-between">
@@ -1101,50 +1093,79 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
           </span>
           <span className="ml-2 text-[11px] text-muted-foreground">{f.range}</span>
         </div>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {f.mastered}/{f.total}
-        </span>
+        <div className="flex items-center gap-2">
+          {f.isActive && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+              Current focus
+            </span>
+          )}
+          <span className="text-[11px] tabular-nums text-muted-foreground">
+            {f.mastered}/{f.total}
+          </span>
+        </div>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
         <div
-          className={`h-full rounded-full ${isComplete ? "bg-success" : "bg-primary"}`}
+          className={`h-full rounded-full ${f.isComplete ? "bg-success" : "bg-primary"}`}
           style={{ width: `${f.pct}%` }}
         />
       </div>
       <div className="mt-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {isComplete ? "Status" : "Projected to complete"}
-        </div>
-        {isComplete ? (
-          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
-        ) : isStalled ? (
+        {f.isComplete ? (
           <>
-            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} left · no closures here in the last
-              4 weeks. Review programs linked to this level.
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Status
             </div>
+            <div className="mt-0.5 font-display text-lg font-bold text-success">Complete</div>
           </>
-        ) : f.etaDate ? (
-          <>
-            <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>
-              {new Date(f.etaDate).toLocaleDateString("en", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-            </div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {f.etaLabel} away · at {f.weekly.toFixed(2)}/wk for this level
-            </div>
-            {isSlowing && (
-              <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
-                <AlertTriangle className="size-3" /> Pace slowing — date may slip
+        ) : f.isActive ? (
+          f.etaDate && f.etaLabel ? (
+            <>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Projected to complete
               </div>
-            )}
-          </>
+              <div className="mt-0.5 font-display text-lg font-bold text-foreground">
+                {new Date(f.etaDate).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                {f.etaLabel} away · at {f.weeklyTargets.toFixed(1)} targets/wk
+              </div>
+              {f.pacing === "slowing" && (
+                <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
+                  <AlertTriangle className="size-3" /> Pace slowing — date may slip
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Forecast
+              </div>
+              <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
+                Building pace
+              </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">
+                Need a few more target closures here before a date is meaningful.
+              </div>
+            </>
+          )
         ) : (
-          <div className={`mt-0.5 font-display text-lg font-bold ${etaTone}`}>{f.etaLabel}</div>
+          <>
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Status
+            </div>
+            <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
+              Upcoming
+            </div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} remaining · scheduled after the
+              current level closes.
+            </div>
+          </>
         )}
       </div>
     </div>

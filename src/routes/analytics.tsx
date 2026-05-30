@@ -1161,24 +1161,30 @@ function SkillMapCard() {
       </div>
 
       {/* Two separate trajectories — programs/milestones close in steps; targets advance continuously */}
-      {liveTrajectory.length > 1 && (
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+      <div className="mt-6">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Progress trajectories
+        </p>
+        <p className="mb-3 text-[11px] text-muted-foreground">
+          Targets accumulate continuously; milestones step up when a whole group signs off.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
           <TrajectoryMini
             label="Cumulative targets mastered"
-            help="Each closed sub-skill bumps this line up — your day-to-day signal."
+            help="Each closed sub-skill bumps this line — day-to-day signal."
             dataKey="targets"
             color="oklch(0.52 0.21 280)"
             type="monotone"
           />
           <TrajectoryMini
             label="Cumulative milestones mastered"
-            help="Steps up when a full milestone (a group of related targets) signs off."
+            help="Steps up when a full milestone signs off."
             dataKey="milestones"
             color="oklch(0.62 0.13 200)"
             type="stepAfter"
           />
         </div>
-      )}
+      </div>
 
 
       {/* Forecast per level */}

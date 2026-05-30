@@ -1225,6 +1225,67 @@ function SkillMapCard() {
   );
 }
 
+function TrajectoryMini({
+  label,
+  help,
+  dataKey,
+  color,
+  type,
+}: {
+  label: string;
+  help: string;
+  dataKey: "targets" | "milestones";
+  color: string;
+  type: "monotone" | "stepAfter";
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface/40 p-3">
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+        <p className="text-[10px] text-muted-foreground">{help}</p>
+      </div>
+      <div className="h-40 w-full">
+        <ResponsiveContainer>
+          <LineChart data={liveTrajectory} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              tickFormatter={(v) =>
+                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+              }
+              minTickGap={40}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: "oklch(0.52 0.02 260)" }}
+              axisLine={false}
+              tickLine={false}
+              width={32}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid oklch(0.9 0.01 250)",
+                fontSize: 12,
+              }}
+              labelFormatter={(v) =>
+                new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
+              }
+            />
+            <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+
+
 function LevelForecastCard({ f }: { f: LevelForecast }) {
   const accentClass = f.isComplete
     ? "border-success/40"

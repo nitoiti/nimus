@@ -306,33 +306,67 @@ function Analytics() {
       <HeroInsight />
       <KpiStrip />
       <DataEraBanner />
-      <div className="mb-6">
-        <MasteryTrajectoryCard />
-      </div>
 
+      {/* 1. The single most parent-facing number. */}
       <div className="mb-6">
         <DevAgeCard />
       </div>
 
+      {/* 2. Where the child is on the VB-MAPP ladder + when the active level lands. */}
+      <div className="mb-6">
+        <VbMappCard />
+      </div>
+
+      {/* 3. How fast we're moving right now (pace, cadence, movers). */}
       <div className="mb-6">
         <SkillMapCard />
       </div>
 
-
-      <div className="mb-6 grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <IndependenceTrendCard />
-        </div>
-        <div className="lg:col-span-2">
-          <VbMappCard />
-        </div>
+      {/* 4. Progress shape over time — continuous vs stepped. */}
+      <div className="mb-6">
+        <ProgressTrajectoriesCard />
       </div>
 
+      {/* 5. Long-range cumulative mastery (historical context). */}
+      <div className="mb-6">
+        <MasteryTrajectoryCard />
+      </div>
+
+      {/* 6. Trial-level behaviour — independence & prompt dependence. */}
+      <div className="mb-6">
+        <IndependenceTrendCard />
+      </div>
 
       <PromptByAreaCard />
       <ActiveTargetsCard />
       <DataQualityFooter />
     </AppLayout>
+  );
+}
+
+function ProgressTrajectoriesCard() {
+  return (
+    <Card
+      title="Progress trajectories"
+      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off — two lenses on the same work."
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <TrajectoryMini
+          label="Cumulative targets mastered"
+          help="Each closed sub-skill bumps this line — day-to-day signal."
+          dataKey="targets"
+          color="oklch(0.52 0.21 280)"
+          type="monotone"
+        />
+        <TrajectoryMini
+          label="Cumulative milestones mastered"
+          help="Steps up when a full milestone signs off."
+          dataKey="milestones"
+          color="oklch(0.62 0.13 200)"
+          type="stepAfter"
+        />
+      </div>
+    </Card>
   );
 }
 

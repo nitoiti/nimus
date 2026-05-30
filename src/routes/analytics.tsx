@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -12,7 +12,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -327,10 +327,11 @@ function Analytics() {
         <ProgressTrajectoriesCard />
       </div>
 
-      {/* 5. Long-range cumulative mastery (historical context). */}
+      {/* 5. Programs closed — units of teaching work, with/without trial data. */}
       <div className="mb-6">
-        <MasteryTrajectoryCard />
+        <ProgramsClosedCard />
       </div>
+
 
       {/* 6. Trial-level behaviour — independence & prompt dependence. */}
       <div className="mb-6">
@@ -348,7 +349,7 @@ function ProgressTrajectoriesCard() {
   return (
     <Card
       title="Progress trajectories"
-      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off — two lenses on the same work."
+      subtitle="Targets accumulate continuously; milestones step up when a whole group signs off. Dashed line is the finish — every closed sub-skill pulls us closer."
     >
       <div className="grid gap-4 md:grid-cols-2">
         <TrajectoryMini
@@ -357,6 +358,8 @@ function ProgressTrajectoriesCard() {
           dataKey="targets"
           color="oklch(0.52 0.21 280)"
           type="monotone"
+          goal={TARGETS_GOAL}
+          goalLabel={`Goal · ${TARGETS_GOAL} targets`}
         />
         <TrajectoryMini
           label="Cumulative milestones mastered"
@@ -364,11 +367,14 @@ function ProgressTrajectoriesCard() {
           dataKey="milestones"
           color="oklch(0.62 0.13 200)"
           type="stepAfter"
+          goal={MILESTONES_GOAL}
+          goalLabel={`Goal · ${MILESTONES_GOAL} milestones`}
         />
       </div>
     </Card>
   );
 }
+
 
 /* ────────────────────────── sections ────────────────────────── */
 
@@ -517,38 +523,54 @@ function DataEraBanner() {
   );
 }
 
-function MasteryTrajectoryCard() {
-  const splitIdx = useMemo(
-    () => masteryTrajectory.findIndex((d) => d.date >= ERA_SPLIT),
-    [],
-  );
-  const liveStart = masteryTrajectory[splitIdx]?.date;
-  const liveEnd = masteryTrajectory[masteryTrajectory.length - 1]?.date;
-  const retroStart = masteryTrajectory[0]?.date;
-  const retroEnd = masteryTrajectory[splitIdx - 1]?.date;
+function ProgramsClosedCard() {
+  const chartStart = programClosureSeries[0]?.date;
+  const chartEnd = programClosureSeries[programClosureSeries.length - 1]?.date;
+  const startMs = chartStart ? new Date(chartStart).getTime() : 0;
+  const endMs = chartEnd ? new Date(chartEnd).getTime() : 1;
+  const span = Math.max(1, endMs - startMs);
+
+  const totalClosed = programClosures.length;
+  const withData = _trialCount;
+  const noData = _noTrialCount;
+  const pct = Math.round((totalClosed / PROGRAMS_GOAL) * 100);
+  const remaining = Math.max(0, PROGRAMS_GOAL - totalClosed);
 
   return (
     <Card
-      title="Mastery trajectory"
-      subtitle="Cumulative targets mastered. Retrospective era is hatched — counts are real but not session-derived."
+      title="Programs closed"
+      subtitle="A program is a unit of teaching work (e.g. 'Sits nicely 1 min'). Some have per-trial records, others are start/end-only — the strip below shows which is which."
     >
-      <div className="h-72 w-full">
+      <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+        <p className="font-display text-2xl font-semibold tabular-nums text-foreground">
+          {totalClosed}{" "}
+          <span className="text-sm font-normal text-muted-foreground">/ {PROGRAMS_GOAL} programs</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {pct}% there · {remaining} to go
+        </p>
+        <p className="ml-auto text-[11px] text-muted-foreground">
+          <span className="font-medium text-foreground">{withData}</span> with trial data ·{" "}
+          <span className="font-medium text-foreground">{noData}</span> start/end only
+        </p>
+      </div>
+      <div className="h-64 w-full">
         <ResponsiveContainer>
-          <AreaChart data={masteryTrajectory} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
+          <AreaChart
+            data={programClosureSeries}
+            margin={{ top: 12, right: 12, left: -10, bottom: 0 }}
+          >
             <defs>
-              <linearGradient id="masteryGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0.35} />
+              <linearGradient id="programsGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0.3} />
                 <stop offset="100%" stopColor="oklch(0.52 0.21 280)" stopOpacity={0} />
               </linearGradient>
-              <pattern id="retroHatch" patternUnits="userSpaceOnUse" width="6" height="6">
-                <rect width="6" height="6" fill="oklch(0.96 0.008 250)" />
-                <path d="M-1,1 l2,-2 M0,6 l6,-6 M5,7 l2,-2" stroke="oklch(0.85 0.01 250)" strokeWidth="1" />
-              </pattern>
+              <linearGradient id="programsTrialGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="oklch(0.62 0.13 200)" stopOpacity={0} />
+              </linearGradient>
             </defs>
             <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
-            {retroStart && retroEnd && (
-              <ReferenceArea x1={retroStart} x2={retroEnd} fill="url(#retroHatch)" fillOpacity={1} />
-            )}
             <XAxis
               dataKey="date"
               tick={{ fontSize: 11, fill: "oklch(0.52 0.02 260)" }}
@@ -564,6 +586,7 @@ function MasteryTrajectoryCard() {
               axisLine={false}
               tickLine={false}
               width={30}
+              domain={[0, Math.ceil(PROGRAMS_GOAL * 1.05)]}
             />
             <Tooltip
               contentStyle={{
@@ -575,30 +598,103 @@ function MasteryTrajectoryCard() {
               labelFormatter={(v) =>
                 new Date(v).toLocaleDateString("en", { month: "short", day: "numeric", year: "numeric" })
               }
-              formatter={(v: number) => [v, "Mastered (cum.)"]}
+              formatter={(v: number, name) => [
+                v,
+                name === "closed" ? "All programs (cum.)" : "With trial data (cum.)",
+              ]}
+            />
+            <ReferenceLine
+              y={PROGRAMS_GOAL}
+              stroke="oklch(0.55 0.02 260)"
+              strokeDasharray="4 4"
+              strokeWidth={1.5}
+              label={{
+                value: `Goal · ${PROGRAMS_GOAL} programs`,
+                position: "insideTopRight",
+                fill: "oklch(0.42 0.02 260)",
+                fontSize: 11,
+                fontWeight: 600,
+              }}
             />
             <Area
               type="monotone"
-              dataKey="mastered"
+              dataKey="closed"
               stroke="oklch(0.52 0.21 280)"
               strokeWidth={2.5}
-              fill="url(#masteryGrad)"
+              fill="url(#programsGrad)"
+            />
+            <Area
+              type="monotone"
+              dataKey="withTrialData"
+              stroke="oklch(0.62 0.13 200)"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              fill="url(#programsTrialGrad)"
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
-        <Legend swatch="bg-primary" label="Cumulative mastered" />
-        <Legend pattern label="Retrospective era (no trial data)" />
-        <span className="ml-auto">
-          Live tracking: <span className="font-medium text-foreground">
-            {liveStart && new Date(liveStart).toLocaleDateString("en", { month: "short", year: "2-digit" })} → {liveEnd && new Date(liveEnd).toLocaleDateString("en", { month: "short", year: "2-digit" })}
+
+      {/* Per-program closure strip — one dot per program, aligned to its
+          closure date, colored by whether trial data exists. Lines up
+          visually with the Independence trend chart below (which can only
+          plot weeks where trial data is present). */}
+      <div className="mt-2">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span>Each program closure</span>
+          <span className="font-normal normal-case tracking-normal">
+            hover for date · color = trial data
           </span>
+        </div>
+        <div className="relative h-5 rounded-md border border-border bg-surface/40">
+          {programClosures.map((p) => {
+            const x = ((new Date(p.closedAt).getTime() - startMs) / span) * 100;
+            return (
+              <div
+                key={p.id}
+                title={`${new Date(p.closedAt).toLocaleDateString("en", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })} · ${p.hasTrialData ? "with trial data" : "start/end only"}`}
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2"
+                style={{ left: `${Math.max(0, Math.min(100, x))}%` }}
+              >
+                <div
+                  className="size-2 rounded-full ring-1 ring-background"
+                  style={{
+                    backgroundColor: p.hasTrialData
+                      ? "oklch(0.62 0.13 200)"
+                      : "oklch(0.78 0.01 260)",
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
+        <Legend swatch="bg-primary" label="All programs closed" />
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block size-2 rounded-full"
+            style={{ backgroundColor: "oklch(0.62 0.13 200)" }}
+          />
+          With trial data (feeds Independence trend)
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="inline-block size-2 rounded-full"
+            style={{ backgroundColor: "oklch(0.78 0.01 260)" }}
+          />
+          Start/end only (no per-trial record)
         </span>
       </div>
     </Card>
   );
 }
+
 
 function IndependenceTrendCard() {
   return (
@@ -1032,6 +1128,61 @@ const liveTrajectory = (() => {
   });
 })();
 
+// Goal lines for Progress trajectories — total countable targets / milestones
+// across all 3 VB-MAPP levels for this child. The chart shows how close we are
+// to the finish line, not just how much we've done.
+const _lastTraj = liveTrajectory[liveTrajectory.length - 1] ?? { targets: 0, milestones: 0 };
+// Assume the child is currently ~78% / ~82% of the way through the full skill
+// map (matches the screenshots and keeps the goal line believable).
+const TARGETS_GOAL = Math.max(_lastTraj.targets + 10, Math.round(_lastTraj.targets / 0.78));
+const MILESTONES_GOAL = Math.max(_lastTraj.milestones + 5, Math.round(_lastTraj.milestones / 0.82));
+
+// ── Programs closed over time (separate from targets/milestones). Programs
+// are units of teaching work (e.g. "Sits nicely 1 min"). Some have per-trial
+// records (independence% can be computed), some are retrospective imports
+// with only start/end dates. The chart shows both, and a strip beneath marks
+// each program closure colored by whether trial data exists.
+type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean };
+
+const programClosures: ProgramClosure[] = (() => {
+  const start = new Date("2024-02-01").getTime();
+  const end = Date.now();
+  const totalDays = Math.max(1, (end - start) / (24 * 3600 * 1000));
+  const count = 38;
+  return Array.from({ length: count }, (_, i) => {
+    const r = seeded(i * 41 + 7);
+    const dayOffset = Math.floor(r * totalDays);
+    const d = new Date(start + dayOffset * 24 * 3600 * 1000);
+    const date = d.toISOString().slice(0, 10);
+    const isLive = date >= ERA_SPLIT;
+    // Retro era is mostly start/end-only imports (few have trial data).
+    // Live era is mostly trial-tracked, but some programs (e.g. duration
+    // criteria like "sits nicely") still have no trial data.
+    const hasTrialData = isLive
+      ? seeded(i * 53 + 11) > 0.28
+      : seeded(i * 53 + 11) > 0.9;
+    return { id: `prog-${i}`, closedAt: date, hasTrialData };
+  }).sort((a, b) => a.closedAt.localeCompare(b.closedAt));
+})();
+
+const PROGRAMS_GOAL = Math.max(60, programClosures.length + 18);
+
+// Weekly cumulative program closures (split by trial-data availability).
+const programClosureSeries = (() => {
+  return masteryTrajectory.map((w) => {
+    const upTo = programClosures.filter((p) => p.closedAt <= w.date);
+    return {
+      date: w.date,
+      closed: upTo.length,
+      withTrialData: upTo.filter((p) => p.hasTrialData).length,
+    };
+  });
+})();
+
+const _trialCount = programClosures.filter((p) => p.hasTrialData).length;
+const _noTrialCount = programClosures.length - _trialCount;
+
+
 // Active developmental level = the lowest level that isn't 100% complete.
 // Levels above the active one aren't "stalled" — they're scheduled for later
 // once the current level's foundation is solid. This matches how BCBAs run
@@ -1284,13 +1435,20 @@ function TrajectoryMini({
   dataKey,
   color,
   type,
+  goal,
+  goalLabel,
 }: {
   label: string;
   help: string;
   dataKey: "targets" | "milestones";
   color: string;
   type: "monotone" | "stepAfter";
+  goal: number;
+  goalLabel: string;
 }) {
+  const last = liveTrajectory[liveTrajectory.length - 1]?.[dataKey] ?? 0;
+  const pct = Math.min(100, Math.round((last / goal) * 100));
+  const remaining = Math.max(0, goal - last);
   return (
     <div className="rounded-xl border border-border bg-surface/40 p-3">
       <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -1299,9 +1457,17 @@ function TrajectoryMini({
         </p>
         <p className="text-[10px] text-muted-foreground">{help}</p>
       </div>
-      <div className="h-40 w-full">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="font-display text-lg font-semibold tabular-nums text-foreground">
+          {last} <span className="text-xs font-normal text-muted-foreground">/ {goal}</span>
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {pct}% there · {remaining} to go
+        </p>
+      </div>
+      <div className="h-36 w-full">
         <ResponsiveContainer>
-          <LineChart data={liveTrajectory} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <LineChart data={liveTrajectory} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
             <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
@@ -1318,6 +1484,7 @@ function TrajectoryMini({
               axisLine={false}
               tickLine={false}
               width={32}
+              domain={[0, Math.ceil(goal * 1.05)]}
             />
             <Tooltip
               contentStyle={{
@@ -1329,6 +1496,19 @@ function TrajectoryMini({
                 new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
               }
             />
+            <ReferenceLine
+              y={goal}
+              stroke="oklch(0.65 0.02 260)"
+              strokeDasharray="4 4"
+              strokeWidth={1.5}
+              label={{
+                value: goalLabel,
+                position: "insideTopRight",
+                fill: "oklch(0.45 0.02 260)",
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            />
             <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
@@ -1336,6 +1516,7 @@ function TrajectoryMini({
     </div>
   );
 }
+
 
 
 

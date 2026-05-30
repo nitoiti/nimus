@@ -733,14 +733,28 @@ const devMonthsNow = perAreaDev.length
   ? Math.round(Math.min(...perAreaDev.map((a) => a.months)))
   : 0;
 
-// Mock: a year ago dev age was ~5 months lower. In production this comes
-// from a recomputation against the snapshot 12 months back.
-const devMonths12moAgo = Math.max(0, devMonthsNow - 5);
-const gapNow = bioMonthsNow - devMonthsNow;
-const gap12moAgo = bioMonthsNow - 12 - devMonths12moAgo;
-const gapChange = gapNow - gap12moAgo; // negative = catching up, positive = falling further behind
+// Mock period snapshots — in production these come from re-computing dev age
+// against historical snapshots. Compared in months of dev-age growth.
+// Convention: narrowing rate = how many dev-months gained vs how many bio-months
+// passed in the same window. >0 means we closed gap, 0 means no improvement.
+const devGain30d = 1.4; // mock: dev age advanced 1.4 mo over last 30 days
+const devGainPrev30d = 0.9; // prior 30 days advanced 0.9 mo
+// 1 bio-month always passes in 30 days, so narrowing = devGain - 1.
+const gapChange30d = devGain30d - 1; // +0.4 mo closed
+const gapChangePrev30d = devGainPrev30d - 1; // -0.1 (no improvement)
 
-const bottomAreas = [...perAreaDev].sort((a, b) => a.months - b.months).slice(0, 4);
+// "Where to focus next" — areas closest to a level threshold whose closure
+// would lift the overall dev age the most. Positive framing: each suggestion
+// = a concrete unlock.
+const focusAreas = [...perAreaDev]
+  .sort((a, b) => a.months - b.months)
+  .slice(0, 3)
+  .map((a, i) => ({
+    ...a,
+    // Mock projected lift if the next few targets close in this area.
+    liftMonths: [3, 2, 1][i] ?? 1,
+    nextTargets: [4, 3, 2][i] ?? 2,
+  }));
 
 function fmtMonths(m: number) {
   const y = Math.floor(m / 12);
@@ -750,20 +764,20 @@ function fmtMonths(m: number) {
 }
 
 function DevAgeCard() {
-  const devPct = bioMonthsNow > 0 ? Math.min(100, (devMonthsNow / bioMonthsNow) * 100) : 0;
-  const catchingUp = gapChange < 0;
-  const holdingPace = Math.abs(gapChange) <= 1;
-  const trendTone = catchingUp
-    ? "text-success"
-    : holdingPace
-      ? "text-foreground"
-      : "text-destructive";
-  const TrendIcon = catchingUp ? TrendingUp : holdingPace ? Minus : TrendingDown;
-  const trendLabel = catchingUp
-    ? `Catching up — gap narrowed ${Math.abs(gapChange)} mo this year`
-    : holdingPace
-      ? `Holding the gap steady (${Math.abs(gapChange)} mo change this year)`
-      : `Gap widened ${gapChange} mo this year`;
+  const narrowed = Math.max(0, gapChange30d); // never show negative
+  const improving = narrowed > 0;
+  const prevNarrowed = Math.max(0, gapChangePrev30d);
+  const faster = narrowed > prevNarrowed + 0.05;
+  const sameSpeed = Math.abs(narrowed - prevNarrowed) <= 0.05;
+  const trendTone = improving ? "text-success" : "text-muted-foreground";
+  const TrendIcon = improving ? TrendingUp : Minus;
+  const trendLabel = !improving
+    ? "No gap improvement in the last 30 days"
+    : faster
+      ? `Narrowing the gap faster — closed ${narrowed.toFixed(1)} mo in last 30 days (was ${prevNarrowed.toFixed(1)})`
+      : sameSpeed
+        ? `Holding pace — closed ${narrowed.toFixed(1)} mo in last 30 days, same as prior 30d`
+        : `Closed ${narrowed.toFixed(1)} mo of gap in last 30 days · prior 30d was ${prevNarrowed.toFixed(1)} mo`;
 
   return (
     <Card

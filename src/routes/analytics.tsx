@@ -1343,6 +1343,7 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
                 {f.etaLabel} away · at {f.weeklyTargets.toFixed(1)} targets/wk
+                {f.pacing === "building" && " (lifetime pace — recent 4w is light)"}
               </div>
               {f.pacing === "slowing" && (
                 <div className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-warning-foreground">
@@ -1353,27 +1354,27 @@ function LevelForecastCard({ f }: { f: LevelForecast }) {
           ) : (
             <>
               <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Forecast
+                Projected to complete
               </div>
               <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
-                Building pace
+                Needs first closures
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                Need a few more target closures here before a date is meaningful.
+                Close a few targets in this level to generate a date.
               </div>
             </>
           )
         ) : (
           <>
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Status
+              Sequenced
             </div>
             <div className="mt-0.5 font-display text-base font-semibold text-muted-foreground">
-              Upcoming
+              After Level {vbMappLevels[activeLevelIdx]?.level ?? 1} completes
             </div>
             <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} remaining · scheduled after the
-              current level closes.
+              {f.remaining} milestone{f.remaining === 1 ? "" : "s"} here · forecast appears once
+              this becomes the current focus.
             </div>
           </>
         )}

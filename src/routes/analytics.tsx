@@ -634,13 +634,41 @@ function IndependenceTrendCard() {
 
 function VbMappCard() {
   return (
-    <Card title="VB-MAPP levels" subtitle="Milestones mastered per developmental level.">
+    <Card
+      title="VB-MAPP levels & forecast"
+      subtitle="Milestones mastered per developmental level, with an ETA for the level currently in focus."
+    >
       <div className="space-y-3">
-        {vbMappLevels.map((l) => {
+        {vbMappLevels.map((l, i) => {
           const pct = Math.round((l.mastered / l.total) * 100);
           const complete = l.status === "complete";
+          const f = levelForecasts[i];
+          const isActive = f?.isActive;
+          const eta = f?.etaLabel;
+          const etaDate = f?.etaDate
+            ? new Date(f.etaDate).toLocaleDateString("en", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })
+            : null;
+          const statusLabel = complete
+            ? "Complete"
+            : isActive
+              ? "Current focus"
+              : "Sequenced";
+          const statusTone = complete
+            ? "text-success"
+            : isActive
+              ? "text-info"
+              : "text-muted-foreground";
           return (
-            <div key={l.level} className="rounded-xl border border-border bg-surface/50 p-4">
+            <div
+              key={l.level}
+              className={`rounded-xl border bg-surface/50 p-4 ${
+                isActive ? "border-info/40 bg-info/5" : "border-border"
+              }`}
+            >
               <div className="flex items-baseline justify-between">
                 <div>
                   <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -649,11 +677,9 @@ function VbMappCard() {
                   <span className="ml-2 text-[11px] text-muted-foreground">{l.range}</span>
                 </div>
                 <span
-                  className={`text-[10px] font-bold uppercase tracking-wider ${
-                    complete ? "text-success" : "text-info"
-                  }`}
+                  className={`text-[10px] font-bold uppercase tracking-wider ${statusTone}`}
                 >
-                  {complete ? "Complete" : "In progress"}
+                  {statusLabel}
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
@@ -668,6 +694,29 @@ function VbMappCard() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
+              {/* Forecast row — only meaningful for the active level. */}
+              {!complete && (
+                <div className="mt-3 border-t border-border/60 pt-2.5 text-[11px] leading-relaxed">
+                  {isActive ? (
+                    etaDate ? (
+                      <div className="text-foreground">
+                        <span className="font-semibold">Projected completion</span>{" "}
+                        <span className="tabular-nums">{etaDate}</span>{" "}
+                        <span className="text-muted-foreground">({eta} at current pace)</span>
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">Building pace</span> —
+                        close a few more targets to generate a date.
+                      </div>
+                    )
+                  ) : (
+                    <div className="text-muted-foreground">
+                      Forecast appears once Level {l.level - 1} completes.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

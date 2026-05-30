@@ -1345,13 +1345,20 @@ function TrajectoryMini({
   dataKey,
   color,
   type,
+  goal,
+  goalLabel,
 }: {
   label: string;
   help: string;
   dataKey: "targets" | "milestones";
   color: string;
   type: "monotone" | "stepAfter";
+  goal: number;
+  goalLabel: string;
 }) {
+  const last = liveTrajectory[liveTrajectory.length - 1]?.[dataKey] ?? 0;
+  const pct = Math.min(100, Math.round((last / goal) * 100));
+  const remaining = Math.max(0, goal - last);
   return (
     <div className="rounded-xl border border-border bg-surface/40 p-3">
       <div className="mb-1 flex items-baseline justify-between gap-2">
@@ -1360,9 +1367,17 @@ function TrajectoryMini({
         </p>
         <p className="text-[10px] text-muted-foreground">{help}</p>
       </div>
-      <div className="h-40 w-full">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="font-display text-lg font-semibold tabular-nums text-foreground">
+          {last} <span className="text-xs font-normal text-muted-foreground">/ {goal}</span>
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {pct}% there · {remaining} to go
+        </p>
+      </div>
+      <div className="h-36 w-full">
         <ResponsiveContainer>
-          <LineChart data={liveTrajectory} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+          <LineChart data={liveTrajectory} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
             <CartesianGrid stroke="oklch(0.93 0.01 250)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="date"
@@ -1379,6 +1394,7 @@ function TrajectoryMini({
               axisLine={false}
               tickLine={false}
               width={32}
+              domain={[0, Math.ceil(goal * 1.05)]}
             />
             <Tooltip
               contentStyle={{
@@ -1390,6 +1406,19 @@ function TrajectoryMini({
                 new Date(v).toLocaleDateString("en", { month: "short", day: "numeric" })
               }
             />
+            <ReferenceLine
+              y={goal}
+              stroke="oklch(0.65 0.02 260)"
+              strokeDasharray="4 4"
+              strokeWidth={1.5}
+              label={{
+                value: goalLabel,
+                position: "insideTopRight",
+                fill: "oklch(0.45 0.02 260)",
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            />
             <Line type={type} dataKey={dataKey} stroke={color} strokeWidth={2.5} dot={false} />
           </LineChart>
         </ResponsiveContainer>
@@ -1397,6 +1426,7 @@ function TrajectoryMini({
     </div>
   );
 }
+
 
 
 

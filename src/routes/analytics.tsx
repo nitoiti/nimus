@@ -12,7 +12,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Cell,

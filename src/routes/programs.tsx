@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
@@ -14,6 +13,15 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/programs")({
   component: ProgramsPage,
@@ -69,14 +77,14 @@ const STATUS_META: Record<
   },
 };
 
-/* ───────────────────────── Mock data ───────────────────────── */
+/* ───────────────────────── Types & seed ───────────────────────── */
 
 type Program = {
   code: string;
   name: string;
   skill: string;
   status: Status;
-  startedAt: string; // dd.mm.yy
+  startedAt: string;
   endedAt?: string;
   targetsTotal?: number;
   targetsDone?: number;
@@ -88,7 +96,7 @@ type Area = {
   programs: Program[];
 };
 
-const AREAS: Area[] = [
+const SEED_AREAS: Area[] = [
   {
     code: "A",
     title: "Behavior / Cooperation",
@@ -146,107 +154,166 @@ const AREAS: Area[] = [
   },
 ];
 
+const AREA_CODES = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"];
+
 /* ───────────────────────── Page ───────────────────────── */
 
 function ProgramsPage() {
+  const [areas, setAreas] = useState<Area[]>(SEED_AREAS);
   const [filter, setFilter] = useState<"active" | "all">("active");
   const [query, setQuery] = useState("");
 
+  const [newAreaOpen, setNewAreaOpen] = useState(false);
+  const [newProgramArea, setNewProgramArea] = useState<string | null>(null);
+
   const filteredAreas = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return AREAS.map((area) => {
-      const programs = area.programs.filter((p) => {
-        const isActive = p.status === "active" || p.status === "paused" || p.status === "planned";
-        if (filter === "active" && !isActive) return false;
-        if (q && !(`${p.code} ${p.name} ${p.skill}`.toLowerCase().includes(q))) return false;
-        return true;
-      });
-      return { ...area, programs };
-    }).filter((a) => a.programs.length > 0);
-  }, [filter, query]);
+    return areas
+      .map((area) => {
+        const programs = area.programs.filter((p) => {
+          const isActive = p.status === "active" || p.status === "paused" || p.status === "planned";
+          if (filter === "active" && !isActive) return false;
+          if (q && !(`${p.code} ${p.name} ${p.skill}`.toLowerCase().includes(q))) return false;
+          return true;
+        });
+        return { ...area, programs };
+      })
+      .filter((a) => a.programs.length > 0);
+  }, [areas, filter, query]);
 
   const totals = useMemo(() => {
-    const all = AREAS.flatMap((a) => a.programs);
+    const all = areas.flatMap((a) => a.programs);
     return {
       total: all.length,
       active: all.filter((p) => p.status === "active" || p.status === "paused" || p.status === "planned").length,
-      mastered: all.filter((p) => p.status === "mastered" || p.status === "generalized").length,
     };
-  }, []);
+  }, [areas]);
+
+  const isEmpty = totals.total === 0;
+
+  const handleCreateArea = (title: string) => {
+    const code = AREA_CODES[areas.length] ?? `X${areas.length + 1}`;
+    setAreas((prev) => [...prev, { code, title, programs: [] }]);
+    setNewAreaOpen(false);
+  };
+
+  const handleCreateProgram = (
+    areaCode: string,
+    data: { name: string; skill: string; status: Status; startedAt: string },
+  ) => {
+    setAreas((prev) =>
+      prev.map((a) => {
+        if (a.code !== areaCode) return a;
+        const code = `${a.code}${a.programs.length + 1}`;
+        return {
+          ...a,
+          programs: [
+            ...a.programs,
+            {
+              code,
+              name: data.name,
+              skill: data.skill || "—",
+              status: data.status,
+              startedAt: data.startedAt || "—",
+            },
+          ],
+        };
+      }),
+    );
+    setNewProgramArea(null);
+  };
 
   return (
     <AppLayout
       title="Programs"
       subtitle="Working programs grouped by VB-MAPP area."
       actions={
-        <>
-          <Button variant="outline" className="rounded-full">
-            <Library className="size-4" /> Templates
-          </Button>
-          <Button className="rounded-full">
+        !isEmpty ? (
+          <Button className="rounded-full" onClick={() => setNewAreaOpen(true)}>
             <Plus className="size-4" /> New area
           </Button>
-        </>
+        ) : undefined
       }
     >
-      {/* Filter strip */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as "active" | "all")}>
-          <TabsList className="rounded-full bg-card shadow-soft">
-            <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Active · {totals.active}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              All · {totals.total}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {isEmpty ? (
+        <FirstRunEmptyState
+          onStartFromTemplate={() => {
+            /* TODO: open templates picker */
+          }}
+          onStartFromScratch={() => setNewAreaOpen(true)}
+        />
+      ) : (
+        <>
+          {/* Filter strip */}
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as "active" | "all")}>
+              <TabsList className="rounded-full bg-card shadow-soft">
+                <TabsTrigger value="active" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  Active · {totals.active}
+                </TabsTrigger>
+                <TabsTrigger value="all" className="rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  All · {totals.total}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-72">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search programs…"
-              className="rounded-full pl-9 bg-card"
-            />
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1 sm:w-72">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search programs…"
+                  className="rounded-full pl-9 bg-card"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Status legend */}
-      <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-        {(Object.keys(STATUS_META) as Status[]).map((s) => (
-          <span key={s} className="inline-flex items-center gap-1.5">
-            <span className={cn("size-2 rounded-full", STATUS_META[s].dot)} />
-            {STATUS_META[s].label}
-          </span>
-        ))}
-      </div>
+          {/* Status legend */}
+          <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+            {(Object.keys(STATUS_META) as Status[]).map((s) => (
+              <span key={s} className="inline-flex items-center gap-1.5">
+                <span className={cn("size-2 rounded-full", STATUS_META[s].dot)} />
+                {STATUS_META[s].label}
+              </span>
+            ))}
+          </div>
 
-      {/* Area cards */}
-      <div className="space-y-5">
-        {filteredAreas.length === 0 ? (
-          <EmptyState />
-        ) : (
-          filteredAreas.map((area) => <AreaCard key={area.code} area={area} />)
-        )}
-      </div>
+          {/* Area cards */}
+          <div className="space-y-5">
+            {filteredAreas.length === 0 ? (
+              <FilterEmptyState />
+            ) : (
+              filteredAreas.map((area) => (
+                <AreaCard
+                  key={area.code}
+                  area={area}
+                  onAddProgram={() => setNewProgramArea(area.code)}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      <NewAreaDialog
+        open={newAreaOpen}
+        onOpenChange={setNewAreaOpen}
+        onCreate={handleCreateArea}
+      />
+      <NewProgramDialog
+        areaCode={newProgramArea}
+        onOpenChange={(open) => !open && setNewProgramArea(null)}
+        onCreate={(data) => newProgramArea && handleCreateProgram(newProgramArea, data)}
+      />
     </AppLayout>
   );
 }
 
 /* ───────────────────────── Area card ───────────────────────── */
 
-function AreaCard({ area }: { area: Area }) {
-  const activeCount = area.programs.filter(
-    (p) => p.status === "active" || p.status === "paused" || p.status === "planned",
-  ).length;
-  const masteredCount = area.programs.filter(
-    (p) => p.status === "mastered" || p.status === "generalized",
-  ).length;
-
+function AreaCard({ area, onAddProgram }: { area: Area; onAddProgram: () => void }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       {/* Header */}
@@ -259,21 +326,14 @@ function AreaCard({ area }: { area: Area }) {
             {area.title}
           </h2>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {activeCount > 0 && (
-            <Badge variant="secondary" className="rounded-full bg-[oklch(0.95_0.04_250)] text-[oklch(0.4_0.18_260)] hover:bg-[oklch(0.95_0.04_250)]">
-              {activeCount} active
-            </Badge>
-          )}
-          {masteredCount > 0 && (
-            <Badge variant="secondary" className="rounded-full bg-[oklch(0.95_0.05_160)] text-[oklch(0.4_0.14_160)] hover:bg-[oklch(0.95_0.05_160)]">
-              {masteredCount} mastered
-            </Badge>
-          )}
-          <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs font-medium text-primary hover:bg-primary/10">
-            <Plus className="size-3.5" /> Program
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onAddProgram}
+          className="h-7 self-start rounded-full text-xs font-medium text-primary hover:bg-primary/10 sm:self-auto"
+        >
+          <Plus className="size-3.5" /> Program
+        </Button>
       </header>
 
       {/* Desktop / tablet table */}
@@ -390,7 +450,40 @@ function AreaCard({ area }: { area: Area }) {
   );
 }
 
-function EmptyState() {
+/* ───────────────────────── Empty states ───────────────────────── */
+
+function FirstRunEmptyState({
+  onStartFromTemplate,
+  onStartFromScratch,
+}: {
+  onStartFromTemplate: () => void;
+  onStartFromScratch: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
+      <div className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+        <Sparkles className="size-5" />
+      </div>
+      <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
+        Start your first program
+      </h3>
+      <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+        Pick a ready-made VB-MAPP template, or start from scratch and build
+        your own areas and programs.
+      </p>
+      <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
+        <Button variant="outline" className="rounded-full" onClick={onStartFromTemplate}>
+          <Library className="size-4" /> Start from template
+        </Button>
+        <Button className="rounded-full" onClick={onStartFromScratch}>
+          <Plus className="size-4" /> Start from scratch
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FilterEmptyState() {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
       <div className="mx-auto grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
@@ -404,5 +497,158 @@ function EmptyState() {
         or clearing your search.
       </p>
     </div>
+  );
+}
+
+/* ───────────────────────── Dialogs ───────────────────────── */
+
+function NewAreaDialog({
+  open,
+  onOpenChange,
+  onCreate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreate: (title: string) => void;
+}) {
+  const [title, setTitle] = useState("");
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const t = title.trim();
+    if (!t) return;
+    onCreate(t);
+    setTitle("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) setTitle(""); }}>
+      <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>New area</DialogTitle>
+          <DialogDescription>
+            Group related programs under a VB-MAPP area (e.g. Listener, Intraverbal).
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="area-title">Area name</Label>
+            <Input
+              id="area-title"
+              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Intraverbal"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" className="rounded-full" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="rounded-full" disabled={!title.trim()}>
+              Create
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function NewProgramDialog({
+  areaCode,
+  onOpenChange,
+  onCreate,
+}: {
+  areaCode: string | null;
+  onOpenChange: (open: boolean) => void;
+  onCreate: (data: { name: string; skill: string; status: Status; startedAt: string }) => void;
+}) {
+  const [name, setName] = useState("");
+  const [skill, setSkill] = useState("");
+  const [status, setStatus] = useState<Status>("planned");
+  const [startedAt, setStartedAt] = useState("");
+
+  const open = areaCode !== null;
+
+  const handleOpenChange = (o: boolean) => {
+    onOpenChange(o);
+    if (!o) {
+      setName(""); setSkill(""); setStatus("planned"); setStartedAt("");
+    }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = name.trim();
+    if (!n) return;
+    onCreate({ name: n, skill: skill.trim(), status, startedAt: startedAt.trim() });
+    setName(""); setSkill(""); setStatus("planned"); setStartedAt("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle>New program</DialogTitle>
+          <DialogDescription>
+            {areaCode ? `Add a program to area ${areaCode}.` : "Add a program."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="prog-name">Program name *</Label>
+            <Input
+              id="prog-name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Matching identical pictures…"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="prog-skill">Skill (group)</Label>
+            <Input
+              id="prog-skill"
+              value={skill}
+              onChange={(e) => setSkill(e.target.value)}
+              placeholder="Skill name (or leave empty)…"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="prog-status">Status</Label>
+              <select
+                id="prog-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as Status)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {(Object.keys(STATUS_META) as Status[]).map((s) => (
+                  <option key={s} value={s}>{STATUS_META[s].label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prog-start">Start date</Label>
+              <Input
+                id="prog-start"
+                value={startedAt}
+                onChange={(e) => setStartedAt(e.target.value)}
+                placeholder="dd.mm.yy"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" className="rounded-full" onClick={() => handleOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" className="rounded-full" disabled={!name.trim()}>
+              Add
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

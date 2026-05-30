@@ -266,6 +266,23 @@ function ProgramsPage() {
     setNewProgramArea(null);
   };
 
+  const handleUpdateProgram = (
+    areaCode: string,
+    code: string,
+    patch: Partial<Program>,
+  ) => {
+    setAreas((prev) =>
+      prev.map((a) =>
+        a.code !== areaCode
+          ? a
+          : {
+              ...a,
+              programs: a.programs.map((p) => (p.code === code ? { ...p, ...patch } : p)),
+            },
+      ),
+    );
+  };
+
   return (
     <AppLayout
       title="Programs"

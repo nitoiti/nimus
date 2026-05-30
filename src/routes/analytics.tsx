@@ -1126,24 +1126,90 @@ const liveTrajectory = (() => {
   });
 })();
 
-// Goal lines for Progress trajectories — total countable targets / milestones
-// across all 3 VB-MAPP levels for this child. The chart shows how close we are
-// to the finish line, not just how much we've done.
-const _lastTraj = liveTrajectory[liveTrajectory.length - 1] ?? { targets: 0, milestones: 0 };
-// Assume the child is currently ~78% / ~82% of the way through the full skill
-// map (matches the screenshots and keeps the goal line believable).
-const TARGETS_GOAL = Math.max(_lastTraj.targets + 10, Math.round(_lastTraj.targets / 0.78));
-const MILESTONES_GOAL = Math.max(_lastTraj.milestones + 5, Math.round(_lastTraj.milestones / 0.82));
+// ── Per-level closure simulation (named, dated) ──────────────────────────
+// For the active VB-MAPP level we surface every closed milestone + target as
+// a clickable dot on a timeline. Names are seeded but stable.
+const _activeLevelIdxForData = vbMappLevels.findIndex((l) => l.mastered < l.total);
+const ACTIVE_LEVEL = vbMappLevels[_activeLevelIdxForData >= 0 ? _activeLevelIdxForData : 0];
+const TARGETS_PER_LEVEL_MILESTONE = 7; // avg sub-skills per milestone
+const ACTIVE_LEVEL_TARGETS_GOAL = ACTIVE_LEVEL.total * TARGETS_PER_LEVEL_MILESTONE;
+const ACTIVE_LEVEL_TARGETS_CLOSED = Math.max(
+  0,
+  Math.round(ACTIVE_LEVEL_TARGETS_GOAL * (ACTIVE_LEVEL.mastered / ACTIVE_LEVEL.total)) - 3,
+);
 
-// ── Programs closed over time (separate from targets/milestones). Programs
-// are units of teaching work (e.g. "Sits nicely 1 min"). Some have per-trial
-// records (independence% can be computed), some are retrospective imports
-// with only start/end dates. The chart shows both, and a strip beneath marks
-// each program closure colored by whether trial data exists.
-type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean };
+const _AREA_POOL_FOR_ACTIVE_LEVEL = SKILL_AREAS
+  .filter((a) => a.levels[ACTIVE_LEVEL.level - 1])
+  .map((a) => a.name);
+
+type Closure = { id: string; date: string; name: string; meta?: string };
+
+const _DATA_START = "2024-02-01";
+const _DATA_END = new Date().toISOString().slice(0, 10);
+
+const activeLevelMilestoneClosures: Closure[] = (() => {
+  const start = new Date(_DATA_START).getTime();
+  const end = new Date(_DATA_END).getTime();
+  const span = Math.max(1, end - start);
+  return Array.from({ length: ACTIVE_LEVEL.mastered }, (_, i) => {
+    const r1 = seeded(i * 31 + 100);
+    const r2 = seeded(i * 47 + 113);
+    const d = new Date(start + Math.floor(r1 * span));
+    const area = _AREA_POOL_FOR_ACTIVE_LEVEL[Math.floor(r2 * _AREA_POOL_FOR_ACTIVE_LEVEL.length)] ?? "Skill";
+    return {
+      id: `ms-${i}`,
+      date: d.toISOString().slice(0, 10),
+      name: `${area} · L${ACTIVE_LEVEL.level}-${(i % 15) + 1}`,
+    };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+})();
+
+const activeLevelTargetClosures: Closure[] = (() => {
+  const start = new Date(_DATA_START).getTime();
+  const list: Closure[] = [];
+  activeLevelMilestoneClosures.forEach((m, mi) => {
+    const n = 5 + Math.round(seeded(mi * 23 + 5) * 4);
+    const mTime = new Date(m.date).getTime();
+    for (let k = 0; k < n; k++) {
+      const back = Math.floor(seeded(mi * 37 + k * 11) * 30 * 24 * 3600 * 1000);
+      const t = Math.max(start, mTime - back);
+      list.push({
+        id: `t-${mi}-${k}`,
+        date: new Date(t).toISOString().slice(0, 10),
+        name: `${m.name} · sub-skill ${k + 1}`,
+      });
+    }
+  });
+  return list.slice(0, ACTIVE_LEVEL_TARGETS_CLOSED).sort((a, b) => a.date.localeCompare(b.date));
+})();
+
+function _buildCumSeries(closures: Closure[]): { date: string; value: number }[] {
+  return masteryTrajectory.map((w) => ({
+    date: w.date,
+    value: closures.filter((c) => c.date <= w.date).length,
+  }));
+}
+const activeLevelMilestoneSeries = _buildCumSeries(activeLevelMilestoneClosures);
+const activeLevelTargetSeries = _buildCumSeries(activeLevelTargetClosures);
+
+// ── Programs: real catalog of seeded names; no fabricated goal. ──────────
+type ProgramClosure = { id: string; closedAt: string; hasTrialData: boolean; name: string };
+
+const _PROGRAM_NAMES = [
+  "Sits nicely 1 min", "Hand washing", "Tact - vehicles", "Mand - cookie",
+  "Imitates clap", "Matches colors", "Echoic /b/", "Listener - body parts",
+  "Plays solo 5min", "Greets peers", "Names letters A-G", "Sorts by size",
+  "Requests break", "Independent toileting", "Counts 1-5", "Plays catch",
+  "Removes coat", "Identifies emotions", "Follows 2-step", "Receptive shapes",
+  "Tact - animals", "Mand - juice", "Imitates fine motor", "Matches shapes",
+  "Echoic /m/", "Listener - actions", "Parallel play", "Eye contact 3s",
+  "Sorts by color", "Toileting routine", "Counts 6-10", "Throws ball",
+  "Puts on shoes", "Identifies family", "Follows 3-step", "Receptive colors",
+  "Tact - food", "Mand - help",
+];
 
 const programClosures: ProgramClosure[] = (() => {
-  const start = new Date("2024-02-01").getTime();
+  const start = new Date(_DATA_START).getTime();
   const end = Date.now();
   const totalDays = Math.max(1, (end - start) / (24 * 3600 * 1000));
   const count = 38;
@@ -1153,28 +1219,25 @@ const programClosures: ProgramClosure[] = (() => {
     const d = new Date(start + dayOffset * 24 * 3600 * 1000);
     const date = d.toISOString().slice(0, 10);
     const isLive = date >= ERA_SPLIT;
-    // Retro era is mostly start/end-only imports (few have trial data).
-    // Live era is mostly trial-tracked, but some programs (e.g. duration
-    // criteria like "sits nicely") still have no trial data.
     const hasTrialData = isLive
       ? seeded(i * 53 + 11) > 0.28
       : seeded(i * 53 + 11) > 0.9;
-    return { id: `prog-${i}`, closedAt: date, hasTrialData };
+    return {
+      id: `prog-${i}`,
+      closedAt: date,
+      hasTrialData,
+      name: _PROGRAM_NAMES[i % _PROGRAM_NAMES.length],
+    };
   }).sort((a, b) => a.closedAt.localeCompare(b.closedAt));
 })();
 
-const PROGRAMS_GOAL = Math.max(60, programClosures.length + 18);
-
-// Weekly cumulative program closures (split by trial-data availability).
+// Weekly cumulative program closures.
 const programClosureSeries = (() => {
-  return masteryTrajectory.map((w) => {
-    const upTo = programClosures.filter((p) => p.closedAt <= w.date);
-    return {
-      date: w.date,
-      closed: upTo.length,
-      withTrialData: upTo.filter((p) => p.hasTrialData).length,
-    };
-  });
+  return masteryTrajectory.map((w) => ({
+    date: w.date,
+    value: programClosures.filter((p) => p.closedAt <= w.date).length,
+    withTrialData: programClosures.filter((p) => p.closedAt <= w.date && p.hasTrialData).length,
+  }));
 })();
 
 const _trialCount = programClosures.filter((p) => p.hasTrialData).length;

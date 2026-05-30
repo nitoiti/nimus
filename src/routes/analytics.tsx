@@ -72,7 +72,9 @@ const masteryTrajectory = (() => {
 // Weekly independence% (live era only)
 const independenceTrend = (() => {
   const start = new Date(ERA_SPLIT);
-  return Array.from({ length: 40 }, (_, i) => {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const count = Math.max(40, Math.ceil((Date.now() - start.getTime()) / WEEK_MS));
+  return Array.from({ length: count }, (_, i) => {
     const d = new Date(start);
     d.setDate(d.getDate() + i * 7);
     const base = 42 + i * 0.7 + Math.sin(i / 3) * 6;

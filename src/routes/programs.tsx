@@ -374,7 +374,23 @@ function ProgramsPage() {
 
 /* ───────────────────────── Area card ───────────────────────── */
 
-function AreaCard({ area, onAddProgram }: { area: Area; onAddProgram: () => void }) {
+function AreaCard({
+  area,
+  onAddProgram,
+  onUpdateProgram,
+}: {
+  area: Area;
+  onAddProgram: () => void;
+  onUpdateProgram: (code: string, patch: Partial<Program>) => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggle = (code: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(code) ? next.delete(code) : next.add(code);
+      return next;
+    });
+
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
       {/* Header */}
@@ -406,8 +422,8 @@ function AreaCard({ area, onAddProgram }: { area: Area; onAddProgram: () => void
               <th className="px-3 py-2.5">Program</th>
               <th className="px-3 py-2.5">Skill</th>
               <th className="w-32 px-3 py-2.5">Status</th>
-              <th className="w-24 px-3 py-2.5">Start</th>
-              <th className="w-24 px-3 py-2.5">End</th>
+              <th className="w-28 px-3 py-2.5">Start</th>
+              <th className="w-28 px-3 py-2.5">End</th>
               <th className="w-20 px-3 py-2.5 text-right">Targets</th>
               <th className="w-8 px-3 py-2.5" />
             </tr>
@@ -415,49 +431,69 @@ function AreaCard({ area, onAddProgram }: { area: Area; onAddProgram: () => void
           <tbody>
             {area.programs.map((p) => {
               const meta = STATUS_META[p.status];
+              const isOpen = expanded.has(p.code);
               return (
-                <tr
-                  key={p.code}
-                  className={cn(
-                    "border-t border-border/60 transition-colors hover:bg-muted/30",
-                    meta.row,
+                <>
+                  <tr
+                    key={p.code}
+                    className={cn(
+                      "border-t border-border/60 transition-colors hover:bg-muted/30",
+                      meta.row,
+                    )}
+                  >
+                    <td className="px-5 py-3 align-middle text-xs font-medium text-muted-foreground">
+                      {p.code}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <button
+                        onClick={() => toggle(p.code)}
+                        className="flex items-center gap-1.5 text-left font-medium text-primary hover:underline"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                            isOpen && "rotate-90",
+                          )}
+                        />
+                        {p.name}
+                      </button>
+                    </td>
+                    <td className="px-3 py-3 align-middle text-xs italic text-muted-foreground">
+                      {p.skill}
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <StatusPopover
+                        value={p.status}
+                        onChange={(s) => onUpdateProgram(p.code, { status: s })}
+                      />
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <DatePopover
+                        value={p.startedAt}
+                        onChange={(v) => onUpdateProgram(p.code, { startedAt: v })}
+                      />
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <DatePopover
+                        value={p.endedAt}
+                        onChange={(v) => onUpdateProgram(p.code, { endedAt: v })}
+                        allowClear
+                      />
+                    </td>
+                    <td className="px-3 py-3 align-middle text-right text-xs tabular-nums text-muted-foreground">
+                      {p.targetsTotal ? `${p.targetsDone ?? 0}/${p.targetsTotal}` : "—"}
+                    </td>
+                    <td className="px-3 py-3 align-middle text-muted-foreground" />
+                  </tr>
+                  {isOpen && (
+                    <tr key={`${p.code}-stim`} className={cn("border-t border-border/40", meta.row)}>
+                      <td />
+                      <td colSpan={7} className="px-3 pb-4 pt-1">
+                        <StimuliPanel code={p.code} count={p.targetsTotal || 6} />
+                      </td>
+                    </tr>
                   )}
-                >
-                  <td className="px-5 py-3 align-middle text-xs font-medium text-muted-foreground">
-                    {p.code}
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <button className="text-left font-medium text-primary hover:underline">
-                      {p.name}
-                    </button>
-                  </td>
-                  <td className="px-3 py-3 align-middle text-xs italic text-muted-foreground">
-                    {p.skill}
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
-                        meta.chip,
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", meta.dot)} />
-                      {meta.label}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 align-middle text-xs tabular-nums text-foreground/70">
-                    {p.startedAt}
-                  </td>
-                  <td className="px-3 py-3 align-middle text-xs tabular-nums text-foreground/70">
-                    {p.endedAt ?? "—"}
-                  </td>
-                  <td className="px-3 py-3 align-middle text-right text-xs tabular-nums text-muted-foreground">
-                    {p.targetsTotal ? `${p.targetsDone ?? 0}/${p.targetsTotal}` : "—"}
-                  </td>
-                  <td className="px-3 py-3 align-middle text-muted-foreground">
-                    <ChevronRight className="size-4" />
-                  </td>
-                </tr>
+                </>
               );
             })}
           </tbody>
@@ -468,46 +504,196 @@ function AreaCard({ area, onAddProgram }: { area: Area; onAddProgram: () => void
       <ul className="divide-y divide-border/60 md:hidden">
         {area.programs.map((p) => {
           const meta = STATUS_META[p.status];
+          const isOpen = expanded.has(p.code);
           return (
             <li key={p.code} className={cn("px-4 py-3", meta.row)}>
-              <button className="flex w-full items-start gap-3 text-left">
+              <button
+                onClick={() => toggle(p.code)}
+                className="flex w-full items-start gap-3 text-left"
+              >
                 <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                   {p.code}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-primary">{p.name}</p>
+                  <p className="font-medium text-primary">{p.name}</p>
                   <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
                     {p.skill}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium",
-                        meta.chip,
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", meta.dot)} />
-                      {meta.label}
-                    </span>
-                    <span className="inline-flex items-center gap-1 tabular-nums text-muted-foreground">
-                      <Calendar className="size-3" />
-                      {p.startedAt}
-                      {p.endedAt ? ` → ${p.endedAt}` : ""}
-                    </span>
-                    {p.targetsTotal ? (
-                      <span className="tabular-nums text-muted-foreground">
-                        {p.targetsDone ?? 0}/{p.targetsTotal} targets
-                      </span>
-                    ) : null}
-                  </div>
                 </div>
-                <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
+                <ChevronRight
+                  className={cn(
+                    "mt-1 size-4 shrink-0 text-muted-foreground transition-transform",
+                    isOpen && "rotate-90",
+                  )}
+                />
               </button>
+              <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[11px]">
+                <StatusPopover
+                  value={p.status}
+                  onChange={(s) => onUpdateProgram(p.code, { status: s })}
+                />
+                <DatePopover
+                  value={p.startedAt}
+                  onChange={(v) => onUpdateProgram(p.code, { startedAt: v })}
+                  icon
+                />
+                <DatePopover
+                  value={p.endedAt}
+                  onChange={(v) => onUpdateProgram(p.code, { endedAt: v })}
+                  allowClear
+                  icon
+                  placeholder="End date"
+                />
+                {p.targetsTotal ? (
+                  <span className="tabular-nums text-muted-foreground">
+                    {p.targetsDone ?? 0}/{p.targetsTotal} targets
+                  </span>
+                ) : null}
+              </div>
+              {isOpen && (
+                <div className="mt-3 pl-8">
+                  <StimuliPanel code={p.code} count={p.targetsTotal || 6} />
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
     </section>
+  );
+}
+
+/* ───────────────────────── Inline editors ───────────────────────── */
+
+function StatusPopover({
+  value,
+  onChange,
+}: {
+  value: Status;
+  onChange: (s: Status) => void;
+}) {
+  const meta = STATUS_META[value];
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-80",
+            meta.chip,
+          )}
+        >
+          <span className={cn("size-1.5 rounded-full", meta.dot)} />
+          {meta.label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-48 p-1">
+        {(Object.keys(STATUS_META) as Status[]).map((s) => {
+          const m = STATUS_META[s];
+          const active = s === value;
+          return (
+            <button
+              key={s}
+              onClick={() => onChange(s)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted",
+                active && "bg-muted/60",
+              )}
+            >
+              <span className={cn("size-2 rounded-full", m.dot)} />
+              <span className="flex-1 text-left">{m.label}</span>
+              {active && <Check className="size-3.5 text-primary" />}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function DatePopover({
+  value,
+  onChange,
+  allowClear,
+  icon,
+  placeholder = "—",
+}: {
+  value?: string;
+  onChange: (v: string) => void;
+  allowClear?: boolean;
+  icon?: boolean;
+  placeholder?: string;
+}) {
+  const date = parseDdMmYy(value);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs tabular-nums text-foreground/80 transition-colors hover:bg-muted",
+            !value && "text-muted-foreground",
+          )}
+        >
+          {icon && <CalendarIcon className="size-3" />}
+          {value || placeholder}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          defaultMonth={date}
+          onSelect={(d) => d && onChange(fmtDdMmYy(d))}
+          className={cn("p-3 pointer-events-auto")}
+        />
+        {allowClear && value ? (
+          <div className="border-t border-border p-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="w-full"
+              onClick={() => onChange("")}
+            >
+              Clear
+            </Button>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function StimuliPanel({ code, count }: { code: string; count: number }) {
+  const items = useMemo(() => mockStimuli(code, Math.max(3, count)), [code, count]);
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/60 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Stimuli · {items.length}
+        </p>
+        <Button size="sm" variant="ghost" className="h-7 rounded-full text-xs text-primary">
+          <Plus className="size-3.5" /> Stimulus
+        </Button>
+      </div>
+      <ul className="flex flex-wrap gap-1.5">
+        {items.map((s, i) => {
+          const m = STIMULUS_META[s.state];
+          const Icon = m.icon;
+          return (
+            <li
+              key={i}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs",
+                m.chip,
+              )}
+            >
+              <Icon className="size-3" />
+              {s.label}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 

@@ -1012,9 +1012,15 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
       pacing: null,
     };
   }
-  // Active level — use the full target velocity, since that's where work lands.
-  const weeklyTargets = targetsPerWeek;
-  if (weeklyTargets < 0.5) {
+  // Active level — try recent (4w) pace first; fall back to lifetime pace
+  // so we can always show a date instead of a vague "building pace" label.
+  const lifetimeTargets = sumDelta(liveWeeklyTargets);
+  const lifetimeWeeks = Math.max(1, liveWeeklyTargets.length);
+  const lifetimePerWeek = lifetimeTargets / lifetimeWeeks;
+  const usingRecent = targetsPerWeek >= 0.5;
+  const weeklyTargets = usingRecent ? targetsPerWeek : lifetimePerWeek;
+  // If even lifetime velocity is 0, we genuinely have no signal yet.
+  if (weeklyTargets < 0.1) {
     return {
       level: lv.level,
       range: lv.range,
@@ -1022,7 +1028,7 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
       total: lv.total,
       pct,
       remaining: remainingMilestones,
-      weeklyTargets,
+      weeklyTargets: 0,
       isActive: true,
       isComplete: false,
       etaLabel: null,
@@ -1033,8 +1039,11 @@ const levelForecasts: LevelForecast[] = vbMappLevels.map((lv, i) => {
   const weeks = remainingTargets / weeklyTargets;
   const ms = Date.now() + weeks * 7 * 24 * 60 * 60 * 1000;
   const etaDate = new Date(ms).toISOString().slice(0, 10);
-  const pacing: LevelForecast["pacing"] =
-    targetsDeltaPct !== null && targetsDeltaPct < -20 ? "slowing" : "on-track";
+  const pacing: LevelForecast["pacing"] = !usingRecent
+    ? "building"
+    : targetsDeltaPct !== null && targetsDeltaPct < -20
+      ? "slowing"
+      : "on-track";
   const etaLabel =
     weeks < 1.5
       ? `~${Math.max(1, Math.round(weeks * 7))} days`

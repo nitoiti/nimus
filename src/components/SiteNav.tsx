@@ -7,6 +7,7 @@ const appLinks = [
   { to: "/progress", label: "Progress" },
   { to: "/skill-map", label: "Skill Map" },
   { to: "/analytics", label: "Analytics" },
+  { to: "/programs", label: "Programs" },
 ] as const;
 
 export function SiteNav() {

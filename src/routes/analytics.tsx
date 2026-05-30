@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   AreaChart,
   Area,

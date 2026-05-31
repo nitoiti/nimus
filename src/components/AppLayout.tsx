@@ -18,8 +18,12 @@ export function AppLayout({
   return (
     <div className="min-h-screen bg-gradient-soft">
       <SiteNav />
-      <main className="mx-auto max-w-7xl px-6 py-10">
-        <BreadcrumbNav overrides={breadcrumbs} />
+      <div className="border-b border-border/60 bg-background/40 backdrop-blur-sm">
+        <div className="mx-auto max-w-7xl px-6 py-3">
+          <BreadcrumbNav overrides={breadcrumbs} />
+        </div>
+      </div>
+      <main className="mx-auto max-w-7xl px-6 pt-8 pb-10">
         <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">{title}</h1>

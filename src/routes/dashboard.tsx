@@ -144,11 +144,12 @@ function Dashboard() {
           muted={isEmpty}
         />
         <Stat
-          label="Emerging (0.5)"
-          value={isEmpty ? "—" : "11"}
-          tone="warning"
+          label="Goals ready to test"
+          value={isEmpty ? "—" : "3"}
+          tone="success"
           muted={isEmpty}
         />
+
         <Stat
           label="Mastered total"
           value={isEmpty ? "—" : "47"}

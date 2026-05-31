@@ -666,7 +666,38 @@ function DatePopover({
   );
 }
 
+function LinkedGoalsPanel({ code, skill }: { code: string; skill: string }) {
+  // Mock: derive a milestone + goal from the program code/skill
+  const seed = code.charCodeAt(0) + code.length;
+  const milestone = `M${(seed % 8) + 1} · ${skill !== "—" ? skill : "VB-MAPP milestone"}`;
+  const goals = [
+    `Independently demonstrate ${skill || "the target skill"} across 3 sessions`,
+    `Generalize across 2 instructors`,
+  ];
+  return (
+    <div className="rounded-xl border border-border/60 bg-background/60 p-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Linked goals & milestone
+      </p>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.96_0.04_300)] px-2 py-1 text-xs text-[oklch(0.42_0.18_300)]">
+          <Sparkles className="size-3" /> {milestone}
+        </span>
+        {goals.map((g, i) => (
+          <span
+            key={i}
+            className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.95_0.04_250)] px-2 py-1 text-xs text-[oklch(0.4_0.18_260)]"
+          >
+            <TargetIcon className="size-3" /> {g}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function StimuliPanel({ code, count }: { code: string; count: number }) {
+
   const items = useMemo(() => mockStimuli(code, Math.max(3, count)), [code, count]);
   return (
     <div className="rounded-xl border border-border/60 bg-background/60 p-3">

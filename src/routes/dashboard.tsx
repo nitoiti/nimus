@@ -322,15 +322,15 @@ function Dashboard() {
         )}
       </section>
 
-      {/* Emerging targets — the things to push next */}
+      {/* Goals ready to test — programs are ready, time to probe the milestone */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
         <div className="mb-5 flex items-center justify-between">
           <div>
             <h2 className="font-display text-lg font-semibold">
-              Targets to push next
+              Goals ready to test
             </h2>
             <p className="text-sm text-muted-foreground">
-              Emerging skills (0.5) — highest-value targets in VB-MAPP
+              Milestones whose linked programs are ready — run a probe to score them
             </p>
           </div>
           {!isEmpty && (
@@ -344,58 +344,63 @@ function Dashboard() {
         </div>
         {isEmpty ? (
           <EmptyBlock
-            icon={<Sparkles className="size-5" />}
-            title="No targets yet"
-            body="Score milestones in the skill map to surface emerging targets here."
-            cta={{ to: "/skill-map", label: "Open skill map" }}
+            icon={<CheckCircle2 className="size-5" />}
+            title="No goals ready yet"
+            body="When a program reaches mastery, its linked milestone surfaces here as ready to test."
+            cta={{ to: "/programs", label: "Open programs" }}
           />
         ) : (
           <div className="grid gap-2">
             {[
               {
-                target: "Tacts 5 actions on request",
+                milestone: "Tact · 5 actions on request",
                 area: "Tact · L2 · M7",
-                trials: 12,
-                pct: 67,
+                program: "Tact common actions",
+                programPct: 92,
               },
               {
-                target: "Mands using 2-word phrases",
+                milestone: "Mand · 2-word phrases",
                 area: "Mand · L2 · M5",
-                trials: 8,
-                pct: 50,
+                program: "Mand for preferred items",
+                programPct: 88,
               },
               {
-                target: "Echoes 2-3 syllable words",
+                milestone: "Echoic · 2-3 syllable words",
                 area: "Echoic · L2 · M3",
-                trials: 18,
-                pct: 78,
+                program: "Echoic 2-3 syllables",
+                programPct: 95,
               },
             ].map((t) => (
               <Link
-                key={t.target}
+                key={t.milestone}
                 to="/skill-map"
                 className="group flex items-center gap-4 rounded-xl border border-border bg-surface p-3 transition-all hover:border-primary/30 hover:bg-primary/5"
               >
-                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-warning/15 text-warning-foreground">
-                  <Sparkles className="size-4" />
+                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-success/15 text-success">
+                  <CheckCircle2 className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{t.target}</p>
-                  <p className="text-xs text-muted-foreground">{t.area}</p>
+                  <p className="truncate text-sm font-semibold">
+                    {t.milestone}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.area} · via{" "}
+                    <span className="text-foreground/80">{t.program}</span>
+                  </p>
                 </div>
                 <div className="hidden items-center gap-3 sm:flex">
                   <div className="text-right">
-                    <div className="font-display text-sm font-bold text-foreground">
-                      {t.pct}%
+                    <div className="font-display text-sm font-bold text-success">
+                      Ready
                     </div>
                     <div className="text-[10px] text-muted-foreground">
-                      {t.trials} trials
+                      program {t.programPct}%
                     </div>
                   </div>
                   <div className="h-1.5 w-24 overflow-hidden rounded-full bg-border">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-primary to-secondary"
-                      style={{ width: `${t.pct}%` }}
+                      style={{ width: `${t.programPct}%` }}
                     />
                   </div>
                 </div>
@@ -405,6 +410,8 @@ function Dashboard() {
           </div>
         )}
       </section>
+
+
 
       {/* VB-MAPP skill map summary */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">

@@ -26,7 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 
-export const Route = createFileRoute("/programs/$programId")({
+export const Route = createFileRoute("/programs_/$programId")({
   component: ProgramDetailPage,
   head: ({ params }) => ({
     meta: [
@@ -227,16 +227,26 @@ function ProgramDetailPage() {
 
         {/* Right column: links + quick facts */}
         <aside className="space-y-5">
-          <Card title="Linked to" subtitle="Goals & milestone this program advances">
+          <Card title="Linked from skill map" subtitle="Linking is done from skill map">
             <div className="space-y-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.96_0.04_300)] px-2.5 py-1 text-xs text-[oklch(0.42_0.18_300)]">
+              <Link
+                to="/skill-map"
+                hash="M4"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[oklch(0.85_0.08_300)] bg-[oklch(0.96_0.04_300)] px-2.5 py-1 text-xs font-medium text-[oklch(0.42_0.18_300)] transition-colors hover:bg-[oklch(0.92_0.06_300)]"
+              >
                 <Sparkles className="size-3" /> {program.linkedMilestone}
-              </span>
+              </Link>
               <ul className="mt-2 space-y-1.5">
                 {program.linkedGoals.map((g, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <TargetIcon className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.4_0.18_260)]" />
-                    <span>{g}</span>
+                  <li key={i}>
+                    <Link
+                      to="/skill-map"
+                      hash={`M4-g${i + 1}`}
+                      className="inline-flex w-full items-start gap-2 rounded-lg border border-[oklch(0.88_0.06_260)] bg-[oklch(0.97_0.025_250)] px-2.5 py-1.5 text-sm text-[oklch(0.4_0.18_260)] transition-colors hover:bg-[oklch(0.94_0.04_250)]"
+                    >
+                      <TargetIcon className="mt-0.5 size-3.5 shrink-0" />
+                      <span className="text-left">{g}</span>
+                    </Link>
                   </li>
                 ))}
               </ul>

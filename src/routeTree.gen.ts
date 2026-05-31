@@ -16,7 +16,7 @@ import { Route as ProgramsRouteImport } from './routes/programs'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProgramsProgramIdRouteImport } from './routes/programs.$programId'
+import { Route as ProgramsProgramIdRouteImport } from './routes/programs_.$programId'
 import { Route as ApiPublicBetaApplyRouteImport } from './routes/api/public/beta-apply'
 
 const SkillMapRoute = SkillMapRouteImport.update({
@@ -55,9 +55,9 @@ const IndexRoute = IndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProgramsProgramIdRoute = ProgramsProgramIdRouteImport.update({
-  id: '/$programId',
-  path: '/$programId',
-  getParentRoute: () => ProgramsRoute,
+  id: '/programs_/$programId',
+  path: '/programs/$programId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicBetaApplyRoute = ApiPublicBetaApplyRouteImport.update({
   id: '/api/public/beta-apply',
@@ -69,7 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
-  '/programs': typeof ProgramsRouteWithChildren
+  '/programs': typeof ProgramsRoute
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
@@ -80,7 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
-  '/programs': typeof ProgramsRouteWithChildren
+  '/programs': typeof ProgramsRoute
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
@@ -92,11 +92,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/dashboard': typeof DashboardRoute
-  '/programs': typeof ProgramsRouteWithChildren
+  '/programs': typeof ProgramsRoute
   '/progress': typeof ProgressRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/skill-map': typeof SkillMapRoute
-  '/programs/$programId': typeof ProgramsProgramIdRoute
+  '/programs_/$programId': typeof ProgramsProgramIdRoute
   '/api/public/beta-apply': typeof ApiPublicBetaApplyRoute
 }
 export interface FileRouteTypes {
@@ -131,7 +131,7 @@ export interface FileRouteTypes {
     | '/progress'
     | '/sitemap.xml'
     | '/skill-map'
-    | '/programs/$programId'
+    | '/programs_/$programId'
     | '/api/public/beta-apply'
   fileRoutesById: FileRoutesById
 }
@@ -139,10 +139,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   DashboardRoute: typeof DashboardRoute
-  ProgramsRoute: typeof ProgramsRouteWithChildren
+  ProgramsRoute: typeof ProgramsRoute
   ProgressRoute: typeof ProgressRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SkillMapRoute: typeof SkillMapRoute
+  ProgramsProgramIdRoute: typeof ProgramsProgramIdRoute
   ApiPublicBetaApplyRoute: typeof ApiPublicBetaApplyRoute
 }
 
@@ -197,12 +198,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/programs/$programId': {
-      id: '/programs/$programId'
-      path: '/$programId'
+    '/programs_/$programId': {
+      id: '/programs_/$programId'
+      path: '/programs/$programId'
       fullPath: '/programs/$programId'
       preLoaderRoute: typeof ProgramsProgramIdRouteImport
-      parentRoute: typeof ProgramsRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/beta-apply': {
       id: '/api/public/beta-apply'
@@ -214,26 +215,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ProgramsRouteChildren {
-  ProgramsProgramIdRoute: typeof ProgramsProgramIdRoute
-}
-
-const ProgramsRouteChildren: ProgramsRouteChildren = {
-  ProgramsProgramIdRoute: ProgramsProgramIdRoute,
-}
-
-const ProgramsRouteWithChildren = ProgramsRoute._addFileChildren(
-  ProgramsRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   DashboardRoute: DashboardRoute,
-  ProgramsRoute: ProgramsRouteWithChildren,
+  ProgramsRoute: ProgramsRoute,
   ProgressRoute: ProgressRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SkillMapRoute: SkillMapRoute,
+  ProgramsProgramIdRoute: ProgramsProgramIdRoute,
   ApiPublicBetaApplyRoute: ApiPublicBetaApplyRoute,
 }
 export const routeTree = rootRouteImport

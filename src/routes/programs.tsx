@@ -646,6 +646,9 @@ function DatePopover({
           selected={date}
           defaultMonth={date}
           onSelect={(d) => d && onChange(fmtDdMmYy(d))}
+          captionLayout="dropdown"
+          fromYear={1970}
+          toYear={new Date().getFullYear() + 5}
           className={cn("p-3 pointer-events-auto")}
         />
         {allowClear && value ? (

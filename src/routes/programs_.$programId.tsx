@@ -122,6 +122,10 @@ function ProgramDetailPage() {
     <AppLayout
       title={program.name}
       subtitle={`${program.area} · ${program.code}`}
+      breadcrumbs={[
+        { label: "Programs", href: "/programs" },
+        { label: program.name },
+      ]}
       actions={
         <Button asChild variant="ghost" className="rounded-full">
           <Link to="/programs">

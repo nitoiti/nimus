@@ -26,7 +26,7 @@ import {
   Pencil,
 } from "lucide-react";
 
-export const Route = createFileRoute("/programs/$programId")({
+export const Route = createFileRoute("/programs_/$programId")({
   component: ProgramDetailPage,
   head: ({ params }) => ({
     meta: [

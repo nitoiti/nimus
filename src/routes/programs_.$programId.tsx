@@ -430,7 +430,7 @@ function AddStimulusDialog({
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  onAdd: (s: { label: string; state: StimulusState; introducedAt: string; masteredAt?: string }) => void;
+  onAdd: (s: { label: string; state: StimulusState; introducedAt: string; masteredAt: string | undefined }) => void;
 }) {
   const [label, setLabel] = useState("");
   const [state, setState] = useState<StimulusState>("in-program");

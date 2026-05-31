@@ -509,26 +509,30 @@ function AreaCard({
           const isOpen = expanded.has(p.code);
           return (
             <li key={p.code} className={cn("px-4 py-3", meta.row)}>
-              <button
-                onClick={() => toggle(p.code)}
-                className="flex w-full items-start gap-3 text-left"
-              >
+              <div className="flex w-full items-start gap-3">
+                <button
+                  onClick={() => toggle(p.code)}
+                  aria-label={isOpen ? "Collapse" : "Expand"}
+                  className="mt-0.5 grid size-5 shrink-0 place-items-center rounded hover:bg-muted"
+                >
+                  <ChevronRight
+                    className={cn(
+                      "size-4 text-muted-foreground transition-transform",
+                      isOpen && "rotate-90",
+                    )}
+                  />
+                </button>
                 <span className="mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
                   {p.code}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-primary">{p.name}</p>
-                  <p className="mt-0.5 truncate text-xs italic text-muted-foreground">
-                    {p.skill}
-                  </p>
-                </div>
-                <ChevronRight
-                  className={cn(
-                    "mt-1 size-4 shrink-0 text-muted-foreground transition-transform",
-                    isOpen && "rotate-90",
-                  )}
-                />
-              </button>
+                <Link
+                  to="/programs/$programId"
+                  params={{ programId: p.code }}
+                  className="min-w-0 flex-1 font-medium text-primary hover:underline"
+                >
+                  {p.name}
+                </Link>
+              </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 pl-8 text-[11px]">
                 <StatusPopover
                   value={p.status}
@@ -546,18 +550,15 @@ function AreaCard({
                   icon
                   placeholder="End date"
                 />
-                {p.targetsTotal ? (
-                  <span className="tabular-nums text-muted-foreground">
-                    {p.targetsDone ?? 0}/{p.targetsTotal} targets
-                  </span>
-                ) : null}
               </div>
               {isOpen && (
-                <div className="mt-3 pl-8">
+                <div className="mt-3 space-y-3 pl-8">
+                  <LinkedGoalsPanel code={p.code} skill={p.skill} />
                   <StimuliPanel code={p.code} count={p.targetsTotal || 6} />
                 </div>
               )}
             </li>
+
           );
         })}
       </ul>

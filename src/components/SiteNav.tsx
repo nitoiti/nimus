@@ -46,6 +46,7 @@ export function SiteNav() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           {inApp ? (
             <>
               <div className="hidden sm:flex flex-col items-end leading-tight">

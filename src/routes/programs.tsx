@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   Plus,
-  Library,
   ChevronRight,
   Calendar as CalendarIcon,
   Search,
@@ -131,6 +130,9 @@ type Program = {
   endedAt?: string;
   targetsTotal?: number;
   targetsDone?: number;
+  objective?: string;
+  sd?: string;
+  response?: string;
 };
 
 type Area = {
@@ -242,7 +244,7 @@ function ProgramsPage() {
 
   const handleCreateProgram = (
     areaCode: string,
-    data: { name: string; skill: string; status: Status; startedAt: string },
+    data: { name: string; skill: string; status: Status; startedAt: string; objective?: string; sd?: string; response?: string },
   ) => {
     setAreas((prev) =>
       prev.map((a) => {
@@ -258,6 +260,9 @@ function ProgramsPage() {
               skill: data.skill || "—",
               status: data.status,
               startedAt: data.startedAt || "—",
+              objective: data.objective,
+              sd: data.sd,
+              response: data.response,
             },
           ],
         };
@@ -297,9 +302,6 @@ function ProgramsPage() {
     >
       {isEmpty ? (
         <FirstRunEmptyState
-          onStartFromTemplate={() => {
-            /* TODO: open templates picker */
-          }}
           onStartFromScratch={() => setNewAreaOpen(true)}
         />
       ) : (
@@ -749,10 +751,9 @@ function StimuliPanel({ code, count }: { code: string; count: number }) {
 /* ───────────────────────── Empty states ───────────────────────── */
 
 function FirstRunEmptyState({
-  onStartFromTemplate,
   onStartFromScratch,
 }: {
-  onStartFromTemplate: () => void;
+  onStartFromTemplate?: () => void;
   onStartFromScratch: () => void;
 }) {
   return (
@@ -764,15 +765,11 @@ function FirstRunEmptyState({
         Start your first program
       </h3>
       <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
-        Pick a ready-made VB-MAPP template, or start from scratch and build
-        your own areas and programs.
+        Create your first VB-MAPP area and add programs to it.
       </p>
       <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
-        <Button variant="outline" className="rounded-full" onClick={onStartFromTemplate}>
-          <Library className="size-4" /> Start from template
-        </Button>
         <Button className="rounded-full" onClick={onStartFromScratch}>
-          <Plus className="size-4" /> Start from scratch
+          <Plus className="size-4" /> New area
         </Button>
       </div>
     </div>
@@ -858,33 +855,47 @@ function NewProgramDialog({
 }: {
   areaCode: string | null;
   onOpenChange: (open: boolean) => void;
-  onCreate: (data: { name: string; skill: string; status: Status; startedAt: string }) => void;
+  onCreate: (data: { name: string; skill: string; status: Status; startedAt: string; objective?: string; sd?: string; response?: string }) => void;
 }) {
   const [name, setName] = useState("");
   const [skill, setSkill] = useState("");
+  const [objective, setObjective] = useState("");
+  const [sd, setSd] = useState("");
+  const [response, setResponse] = useState("");
   const [status, setStatus] = useState<Status>("planned");
   const [startedAt, setStartedAt] = useState("");
 
   const open = areaCode !== null;
 
+  const reset = () => {
+    setName(""); setSkill(""); setObjective(""); setSd(""); setResponse("");
+    setStatus("planned"); setStartedAt("");
+  };
+
   const handleOpenChange = (o: boolean) => {
     onOpenChange(o);
-    if (!o) {
-      setName(""); setSkill(""); setStatus("planned"); setStartedAt("");
-    }
+    if (!o) reset();
   };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const n = name.trim();
     if (!n) return;
-    onCreate({ name: n, skill: skill.trim(), status, startedAt: startedAt.trim() });
-    setName(""); setSkill(""); setStatus("planned"); setStartedAt("");
+    onCreate({
+      name: n,
+      skill: skill.trim(),
+      status,
+      startedAt: startedAt.trim(),
+      objective: objective.trim() || undefined,
+      sd: sd.trim() || undefined,
+      response: response.trim() || undefined,
+    });
+    reset();
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl">
+      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>New program</DialogTitle>
           <DialogDescription>
@@ -935,12 +946,50 @@ function NewProgramDialog({
               />
             </div>
           </div>
+
+          <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Objective &amp; SD / Response (optional)</p>
+            <div className="space-y-1.5">
+              <Label htmlFor="prog-obj">Objective</Label>
+              <textarea
+                id="prog-obj"
+                value={objective}
+                onChange={(e) => setObjective(e.target.value)}
+                placeholder="The child will be able to…"
+                rows={2}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prog-sd">SD · Discriminative stimulus</Label>
+              <textarea
+                id="prog-sd"
+                value={sd}
+                onChange={(e) => setSd(e.target.value)}
+                placeholder="What you present to the child…"
+                rows={2}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="prog-resp">R · Target response</Label>
+              <textarea
+                id="prog-resp"
+                value={response}
+                onChange={(e) => setResponse(e.target.value)}
+                placeholder="The correct response from the child…"
+                rows={2}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+              />
+            </div>
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="ghost" className="rounded-full" onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" className="rounded-full" disabled={!name.trim()}>
-              Add
+              Add program
             </Button>
           </DialogFooter>
         </form>

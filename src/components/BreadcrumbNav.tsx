@@ -28,32 +28,36 @@ export function BreadcrumbNav({ overrides }: { overrides?: Crumb[] }) {
   if (crumbs.length === 0) return null;
 
   return (
-    <Breadcrumb>
-      <BreadcrumbList className="text-xs text-muted-foreground">
-        {crumbs.map((crumb, i) => {
-          const isLast = i === crumbs.length - 1;
-          return (
-            <BreadcrumbItem key={i}>
-              {isLast || !crumb.href ? (
-                <BreadcrumbPage className="text-foreground font-medium">
-                  {crumb.label}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink asChild>
-                  <Link
-                    to={crumb.href}
-                    className="hover:text-foreground transition-colors"
-                  >
-                    {crumb.label}
-                  </Link>
-                </BreadcrumbLink>
-              )}
-              {!isLast && <BreadcrumbSeparator className="text-muted-foreground/50" />}
-            </BreadcrumbItem>
-          );
-        })}
-      </BreadcrumbList>
-    </Breadcrumb>
+    <div className="border-b border-border/60 bg-background/40 backdrop-blur-sm">
+      <div className="mx-auto max-w-7xl px-6 py-3">
+        <Breadcrumb>
+          <BreadcrumbList className="text-xs text-muted-foreground">
+            {crumbs.map((crumb, i) => {
+              const isLast = i === crumbs.length - 1;
+              return (
+                <BreadcrumbItem key={i}>
+                  {isLast || !crumb.href ? (
+                    <BreadcrumbPage className="text-foreground font-medium">
+                      {crumb.label}
+                    </BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link
+                        to={crumb.href}
+                        className="hover:text-foreground transition-colors"
+                      >
+                        {crumb.label}
+                      </Link>
+                    </BreadcrumbLink>
+                  )}
+                  {!isLast && <BreadcrumbSeparator className="text-muted-foreground/50" />}
+                </BreadcrumbItem>
+              );
+            })}
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+    </div>
   );
 }
 

@@ -669,27 +669,39 @@ function DatePopover({
 function LinkedGoalsPanel({ code, skill }: { code: string; skill: string }) {
   // Mock: derive a milestone + goal from the program code/skill
   const seed = code.charCodeAt(0) + code.length;
-  const milestone = `M${(seed % 8) + 1} · ${skill !== "—" ? skill : "VB-MAPP milestone"}`;
+  const milestoneId = `M${(seed % 8) + 1}`;
+  const milestoneLabel = `${milestoneId} · ${skill !== "—" ? skill : "VB-MAPP milestone"}`;
   const goals = [
     `Independently demonstrate ${skill || "the target skill"} across 3 sessions`,
     `Generalize across 2 instructors`,
   ];
   return (
-    <div className="rounded-xl border border-border/60 bg-background/60 p-3">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Linked goals & milestone
-      </p>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.96_0.04_300)] px-2 py-1 text-xs text-[oklch(0.42_0.18_300)]">
-          <Sparkles className="size-3" /> {milestone}
+    <div className="rounded-xl border border-[oklch(0.88_0.05_300)] bg-[oklch(0.985_0.015_300)] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[oklch(0.42_0.18_300)]">
+          Linked from skill map
+        </p>
+        <span className="text-[10px] text-muted-foreground">
+          Linking is done from skill map
         </span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Link
+          to="/skill-map"
+          hash={milestoneId}
+          className="inline-flex items-center gap-1.5 rounded-full border border-[oklch(0.85_0.08_300)] bg-[oklch(0.96_0.04_300)] px-2.5 py-1 text-xs font-medium text-[oklch(0.42_0.18_300)] transition-colors hover:bg-[oklch(0.92_0.06_300)]"
+        >
+          <Sparkles className="size-3" /> {milestoneLabel}
+        </Link>
         {goals.map((g, i) => (
-          <span
+          <Link
             key={i}
-            className="inline-flex items-center gap-1.5 rounded-full bg-[oklch(0.95_0.04_250)] px-2 py-1 text-xs text-[oklch(0.4_0.18_260)]"
+            to="/skill-map"
+            hash={`${milestoneId}-g${i + 1}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[oklch(0.85_0.08_260)] bg-[oklch(0.95_0.04_250)] px-2.5 py-1 text-xs text-[oklch(0.4_0.18_260)] transition-colors hover:bg-[oklch(0.92_0.06_250)]"
           >
             <TargetIcon className="size-3" /> {g}
-          </span>
+          </Link>
         ))}
       </div>
     </div>

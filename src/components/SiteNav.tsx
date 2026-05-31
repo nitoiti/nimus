@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import nimusLogo from "@/assets/nimus-logo.jpg";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const appLinks = [
   { to: "/dashboard", label: "Dashboard" },

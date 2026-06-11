@@ -527,7 +527,7 @@ function MilestoneSquare({
           ? "border-dashed border-border bg-background/40"
           : cn("bg-background/60", fill.border),
         dimmed && "opacity-25",
-        isAction && view === "targeting" && "ring-2 ring-amber-400 ring-offset-1 ring-offset-card",
+        isAction && view === "review" && "ring-2 ring-rose-400 ring-offset-1 ring-offset-card",
       )}
     >
       {inner}

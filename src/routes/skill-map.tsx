@@ -660,19 +660,19 @@ function MilestoneDetail({
 
       <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
         <TabsList className="mx-6 mt-4 grid grid-cols-2">
-          <TabsTrigger value="score">
-            <Sparkles className="mr-1.5 size-3.5" />
-            Score & history
-          </TabsTrigger>
           <TabsTrigger value="targets">
             <TargetIcon className="mr-1.5 size-3.5" />
             Targets & programs
-            {(milestone.subTargets.length > 0 || links.length > 0) && (
+            {(subTargets.length > 0 || links.length > 0) && (
               <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-                {milestone.subTargets.length}
+                {subTargets.length}
                 {links.length > 0 && <span className="ml-0.5 opacity-70">· {links.length}🔗</span>}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="score">
+            <Sparkles className="mr-1.5 size-3.5" />
+            Score & history
           </TabsTrigger>
         </TabsList>
 

@@ -1166,7 +1166,64 @@ function ScoreButton({
   );
 }
 
+/* ---------- Target status control: 3-state (untested / not mastered / mastered) ---------- */
+function TargetStatusControl({
+  status,
+  onChange,
+}: {
+  status: TargetStatus;
+  onChange: (s: TargetStatus) => void;
+}) {
+  const options: { value: TargetStatus; label: string; icon: React.ReactNode; activeCls: string }[] = [
+    {
+      value: "untested",
+      label: "Untested",
+      icon: <span className="block size-2 rounded-[2px] border border-muted-foreground/40" />,
+      activeCls: "border-foreground/40 bg-background text-foreground",
+    },
+    {
+      value: "not_mastered",
+      label: "Not mastered",
+      icon: <X className="size-3" />,
+      activeCls: "border-rose-400 bg-rose-500 text-white dark:bg-rose-600",
+    },
+    {
+      value: "mastered",
+      label: "Mastered",
+      icon: <Check className="size-3" />,
+      activeCls: "border-emerald-400 bg-emerald-500 text-white dark:bg-emerald-600",
+    },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Target status"
+      className="inline-flex shrink-0 overflow-hidden rounded-md border border-border bg-background"
+    >
+      {options.map((o) => {
+        const active = o.value === status;
+        return (
+          <button
+            key={o.value}
+            role="radio"
+            aria-checked={active}
+            title={o.label}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "grid size-5 place-items-center border-r border-border last:border-r-0 transition",
+              active ? o.activeCls : "text-muted-foreground hover:bg-surface",
+            )}
+          >
+            {o.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- helpers ---------- */
+
 
 function scoreLabel(s: Score): string {
   if (s === null) return "—";

@@ -787,30 +787,37 @@ function MilestoneDetail({
           <section>
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">
-                Targets ({milestone.subTargets.length})
+                Targets ({subTargets.length})
               </span>
               <span className="text-muted-foreground">From the Targets supplement</span>
             </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Closing a milestone no longer closes its targets. Set each target's status
+              independently: <span className="font-semibold text-foreground">untested</span>,{" "}
+              <span className="font-semibold text-rose-600 dark:text-rose-400">not mastered</span>,
+              or <span className="font-semibold text-emerald-600 dark:text-emerald-400">mastered</span>.
+            </p>
             <div className="space-y-2">
-              {milestone.subTargets.map((t) => {
+              {subTargets.map((t) => {
                 const tLinks = targetLinksByCode.get(t.code) ?? [];
+                const setStatus = (status: TargetStatus) =>
+                  setSubTargets((prev) =>
+                    prev.map((x) => (x.code === t.code ? { ...x, status } : x)),
+                  );
                 return (
                   <div
                     key={t.code}
                     className={cn(
                       "rounded-lg border px-3 py-2.5",
-                      t.mastered ? "border-border bg-card" : "border-dashed border-border bg-background/40",
+                      t.status === "mastered"
+                        ? "border-border bg-card"
+                        : t.status === "not_mastered"
+                          ? "border-rose-300/70 bg-rose-50/40 dark:border-rose-500/30 dark:bg-rose-950/20"
+                          : "border-dashed border-border bg-background/40",
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "grid size-4 shrink-0 place-items-center rounded-sm border-2",
-                          t.mastered ? cn(fill.border, fill.solid) : "border-border",
-                        )}
-                      >
-                        {t.mastered && <Check className="size-2.5 text-white" />}
-                      </span>
+                      <TargetStatusControl status={t.status} onChange={setStatus} />
                       <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
                         {t.code}
                       </span>

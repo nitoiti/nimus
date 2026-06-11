@@ -313,7 +313,7 @@ function SkillMap() {
 
           <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
             <ViewToggle active={view === "score"} onClick={() => setView("score")} label="Score grid" />
-            <ViewToggle active={view === "targeting"} onClick={() => setView("targeting")} label="Targeting view" />
+            <ViewToggle active={view === "review"} onClick={() => setView("review")} label="Goals to review" />
           </div>
         </div>
 

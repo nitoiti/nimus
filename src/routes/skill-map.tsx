@@ -605,14 +605,15 @@ function MilestoneDetail({
   milestone: Milestone;
 }) {
   const lv = LEVELS[levelIdx];
-  const [tab, setTab] = useState("score");
+  const [tab, setTab] = useState("targets");
   const [score, setScore] = useState<0 | 0.5 | 1 | null>(milestone.score);
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [links, setLinks] = useState<ProgramLink[]>(milestone.links);
+  const [subTargets, setSubTargets] = useState<SubTarget[]>(milestone.subTargets);
   const [linker, setLinker] = useState<
     | null
-    | { scope: "milestone" } 
+    | { scope: "milestone" }
     | { scope: "target"; targetCode: string }
   >(null);
   const fill = levelFillClass(levelIdx);

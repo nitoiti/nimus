@@ -239,7 +239,11 @@ function subCriteria(area: string, m: number, t: number): string {
  * Page
  * -------------------------------------------------------------------------- */
 
-type ViewMode = "score" | "targeting";
+type ViewMode = "score" | "review";
+
+function milestoneHasOpenTargets(m: Milestone): boolean {
+  return m.score === 1 && m.subTargets.some((t) => t.status !== "mastered");
+}
 
 function SkillMap() {
   const [grid] = useState<Grid>(() => buildGrid());

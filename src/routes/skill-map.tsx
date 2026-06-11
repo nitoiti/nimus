@@ -160,11 +160,17 @@ function buildGrid(): Grid {
         else score = r > 0.9 ? 0.5 : r > 0.7 ? 0 : null;
 
         const subCount = 3 + Math.floor(r * 5);
-        const subTargets: SubTarget[] = Array.from({ length: subCount }, (_, ti) => ({
-          code: `${milestoneN}-${String.fromCharCode(97 + ti)}`,
-          text: subCriteria(a.code, milestoneN, ti),
-          mastered: score === 1 || (score === 0.5 && ti < Math.floor(subCount / 2)),
-        }));
+        const subTargets: SubTarget[] = Array.from({ length: subCount }, (_, ti) => {
+          // Targets are independent of milestone score — never auto-closed.
+          const tr = seeded(ai * 131 + milestoneN * 17 + ti * 7);
+          const status: TargetStatus =
+            tr > 0.75 ? "mastered" : tr > 0.5 ? "not_mastered" : "untested";
+          return {
+            code: `${milestoneN}-${String.fromCharCode(97 + ti)}`,
+            text: subCriteria(a.code, milestoneN, ti),
+            status,
+          };
+        });
 
         const history: HistoryEvent[] = [];
         if (score === 1) {

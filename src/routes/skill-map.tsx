@@ -71,10 +71,12 @@ type Milestone = {
   history: HistoryEvent[];
 };
 
+type TargetStatus = "untested" | "not_mastered" | "mastered";
+
 type SubTarget = {
   code: string;
   text: string;
-  mastered: boolean;
+  status: TargetStatus;
 };
 
 type ProgramLink = {

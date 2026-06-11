@@ -492,9 +492,9 @@ function MilestoneSquare({
 }) {
   const fill = levelFillClass(levelIdx);
 
-  // In "targeting" view, dim everything that's not an action item (0.5 emerging)
-  const isAction = m.score === 0.5;
-  const dimmed = view === "targeting" && !isAction && m.score !== null;
+  // In "review" view, highlight closed milestones (score=1) that still have open targets.
+  const isAction = milestoneHasOpenTargets(m);
+  const dimmed = view === "review" && !isAction;
 
   let inner: React.ReactNode;
   if (m.score === null) {

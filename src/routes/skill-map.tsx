@@ -71,10 +71,12 @@ type Milestone = {
   history: HistoryEvent[];
 };
 
+type TargetStatus = "untested" | "not_mastered" | "mastered";
+
 type SubTarget = {
   code: string;
   text: string;
-  mastered: boolean;
+  status: TargetStatus;
 };
 
 type ProgramLink = {
@@ -158,11 +160,17 @@ function buildGrid(): Grid {
         else score = r > 0.9 ? 0.5 : r > 0.7 ? 0 : null;
 
         const subCount = 3 + Math.floor(r * 5);
-        const subTargets: SubTarget[] = Array.from({ length: subCount }, (_, ti) => ({
-          code: `${milestoneN}-${String.fromCharCode(97 + ti)}`,
-          text: subCriteria(a.code, milestoneN, ti),
-          mastered: score === 1 || (score === 0.5 && ti < Math.floor(subCount / 2)),
-        }));
+        const subTargets: SubTarget[] = Array.from({ length: subCount }, (_, ti) => {
+          // Targets are independent of milestone score — never auto-closed.
+          const tr = seeded(ai * 131 + milestoneN * 17 + ti * 7);
+          const status: TargetStatus =
+            tr > 0.75 ? "mastered" : tr > 0.5 ? "not_mastered" : "untested";
+          return {
+            code: `${milestoneN}-${String.fromCharCode(97 + ti)}`,
+            text: subCriteria(a.code, milestoneN, ti),
+            status,
+          };
+        });
 
         const history: HistoryEvent[] = [];
         if (score === 1) {
@@ -231,7 +239,11 @@ function subCriteria(area: string, m: number, t: number): string {
  * Page
  * -------------------------------------------------------------------------- */
 
-type ViewMode = "score" | "targeting";
+type ViewMode = "score" | "review";
+
+function milestoneHasOpenTargets(m: Milestone): boolean {
+  return m.score === 1 && m.subTargets.some((t) => t.status !== "mastered");
+}
 
 function SkillMap() {
   const [grid] = useState<Grid>(() => buildGrid());
@@ -301,7 +313,7 @@ function SkillMap() {
 
           <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
             <ViewToggle active={view === "score"} onClick={() => setView("score")} label="Score grid" />
-            <ViewToggle active={view === "targeting"} onClick={() => setView("targeting")} label="Targeting view" />
+            <ViewToggle active={view === "review"} onClick={() => setView("review")} label="Goals to review" />
           </div>
         </div>
 
@@ -480,9 +492,9 @@ function MilestoneSquare({
 }) {
   const fill = levelFillClass(levelIdx);
 
-  // In "targeting" view, dim everything that's not an action item (0.5 emerging)
-  const isAction = m.score === 0.5;
-  const dimmed = view === "targeting" && !isAction && m.score !== null;
+  // In "review" view, highlight closed milestones (score=1) that still have open targets.
+  const isAction = milestoneHasOpenTargets(m);
+  const dimmed = view === "review" && !isAction;
 
   let inner: React.ReactNode;
   if (m.score === null) {
@@ -515,7 +527,7 @@ function MilestoneSquare({
           ? "border-dashed border-border bg-background/40"
           : cn("bg-background/60", fill.border),
         dimmed && "opacity-25",
-        isAction && view === "targeting" && "ring-2 ring-amber-400 ring-offset-1 ring-offset-card",
+        isAction && view === "review" && "ring-2 ring-rose-400 ring-offset-1 ring-offset-card",
       )}
     >
       {inner}
@@ -597,14 +609,15 @@ function MilestoneDetail({
   milestone: Milestone;
 }) {
   const lv = LEVELS[levelIdx];
-  const [tab, setTab] = useState("score");
+  const [tab, setTab] = useState("targets");
   const [score, setScore] = useState<0 | 0.5 | 1 | null>(milestone.score);
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [links, setLinks] = useState<ProgramLink[]>(milestone.links);
+  const [subTargets, setSubTargets] = useState<SubTarget[]>(milestone.subTargets);
   const [linker, setLinker] = useState<
     | null
-    | { scope: "milestone" } 
+    | { scope: "milestone" }
     | { scope: "target"; targetCode: string }
   >(null);
   const fill = levelFillClass(levelIdx);
@@ -651,19 +664,19 @@ function MilestoneDetail({
 
       <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
         <TabsList className="mx-6 mt-4 grid grid-cols-2">
-          <TabsTrigger value="score">
-            <Sparkles className="mr-1.5 size-3.5" />
-            Score & history
-          </TabsTrigger>
           <TabsTrigger value="targets">
             <TargetIcon className="mr-1.5 size-3.5" />
             Targets & programs
-            {(milestone.subTargets.length > 0 || links.length > 0) && (
+            {(subTargets.length > 0 || links.length > 0) && (
               <Badge variant="secondary" className="ml-1.5 h-4 px-1 text-[10px]">
-                {milestone.subTargets.length}
+                {subTargets.length}
                 {links.length > 0 && <span className="ml-0.5 opacity-70">· {links.length}🔗</span>}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="score">
+            <Sparkles className="mr-1.5 size-3.5" />
+            Score & history
           </TabsTrigger>
         </TabsList>
 
@@ -778,30 +791,37 @@ function MilestoneDetail({
           <section>
             <div className="mb-2 flex items-center justify-between text-xs">
               <span className="font-bold uppercase tracking-wider text-muted-foreground">
-                Targets ({milestone.subTargets.length})
+                Targets ({subTargets.length})
               </span>
               <span className="text-muted-foreground">From the Targets supplement</span>
             </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Closing a milestone no longer closes its targets. Set each target's status
+              independently: <span className="font-semibold text-foreground">untested</span>,{" "}
+              <span className="font-semibold text-rose-600 dark:text-rose-400">not mastered</span>,
+              or <span className="font-semibold text-emerald-600 dark:text-emerald-400">mastered</span>.
+            </p>
             <div className="space-y-2">
-              {milestone.subTargets.map((t) => {
+              {subTargets.map((t) => {
                 const tLinks = targetLinksByCode.get(t.code) ?? [];
+                const setStatus = (status: TargetStatus) =>
+                  setSubTargets((prev) =>
+                    prev.map((x) => (x.code === t.code ? { ...x, status } : x)),
+                  );
                 return (
                   <div
                     key={t.code}
                     className={cn(
                       "rounded-lg border px-3 py-2.5",
-                      t.mastered ? "border-border bg-card" : "border-dashed border-border bg-background/40",
+                      t.status === "mastered"
+                        ? "border-border bg-card"
+                        : t.status === "not_mastered"
+                          ? "border-rose-300/70 bg-rose-50/40 dark:border-rose-500/30 dark:bg-rose-950/20"
+                          : "border-dashed border-border bg-background/40",
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "grid size-4 shrink-0 place-items-center rounded-sm border-2",
-                          t.mastered ? cn(fill.border, fill.solid) : "border-border",
-                        )}
-                      >
-                        {t.mastered && <Check className="size-2.5 text-white" />}
-                      </span>
+                      <TargetStatusControl status={t.status} onChange={setStatus} />
                       <span className="shrink-0 text-[10px] font-bold tabular-nums text-muted-foreground">
                         {t.code}
                       </span>
@@ -1146,7 +1166,64 @@ function ScoreButton({
   );
 }
 
+/* ---------- Target status control: 3-state (untested / not mastered / mastered) ---------- */
+function TargetStatusControl({
+  status,
+  onChange,
+}: {
+  status: TargetStatus;
+  onChange: (s: TargetStatus) => void;
+}) {
+  const options: { value: TargetStatus; label: string; icon: React.ReactNode; activeCls: string }[] = [
+    {
+      value: "untested",
+      label: "Untested",
+      icon: <span className="block size-2 rounded-[2px] border border-muted-foreground/40" />,
+      activeCls: "border-foreground/40 bg-background text-foreground",
+    },
+    {
+      value: "not_mastered",
+      label: "Not mastered",
+      icon: <X className="size-3" />,
+      activeCls: "border-rose-400 bg-rose-500 text-white dark:bg-rose-600",
+    },
+    {
+      value: "mastered",
+      label: "Mastered",
+      icon: <Check className="size-3" />,
+      activeCls: "border-emerald-400 bg-emerald-500 text-white dark:bg-emerald-600",
+    },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Target status"
+      className="inline-flex shrink-0 overflow-hidden rounded-md border border-border bg-background"
+    >
+      {options.map((o) => {
+        const active = o.value === status;
+        return (
+          <button
+            key={o.value}
+            role="radio"
+            aria-checked={active}
+            title={o.label}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "grid size-5 place-items-center border-r border-border last:border-r-0 transition",
+              active ? o.activeCls : "text-muted-foreground hover:bg-surface",
+            )}
+          >
+            {o.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------- helpers ---------- */
+
 
 function scoreLabel(s: Score): string {
   if (s === null) return "—";
